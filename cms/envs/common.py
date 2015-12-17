@@ -831,6 +831,8 @@ INSTALLED_APPS = (
     # Microsite configuration application
     'microsite_configuration',
 
+    # edx-milestones service
+    'milestones',
 )
 
 
@@ -936,9 +938,6 @@ OPTIONAL_APPS = (
 
     # edxval
     'edxval',
-
-    # milestones
-    'milestones',
 
     # Organizations App (http://github.com/edx/edx-organizations)
     'organizations',
