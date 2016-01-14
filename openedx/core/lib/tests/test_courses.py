@@ -3,6 +3,9 @@ Tests for functionality in openedx/core/lib/courses.py.
 """
 
 import ddt
+
+from django.test.utils import override_settings
+
 from xmodule.modulestore import ModuleStoreEnum
 from xmodule.modulestore.tests.factories import CourseFactory
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
@@ -48,12 +51,13 @@ class CourseImageTestCase(ModuleStoreTestCase):
             course_image_url(course)
         )
 
+    @override_settings(DEFAULT_COURSE_ABOUT_IMAGE_URL='test.png')
+    @override_settings(STATIC_URL='static/')
     @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
     def test_empty_image_name(self, default_store):
         """ Verify that empty image names are cleaned """
-        course_image = u''
-        course = CourseFactory.create(course_image=course_image, default_store=default_store)
+        course = CourseFactory.create(course_image='', default_store=default_store)
         self.assertEquals(
-            course_image,
+            'static/test.png',
             course_image_url(course),
         )

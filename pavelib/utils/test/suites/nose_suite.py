@@ -157,6 +157,7 @@ class SystemTestSuite(NoseTestSuite):
 
         if self.root == 'lms':
             default_test_id += " {system}/tests.py"
+            default_test_id += " openedx/core/lib/*"
 
         if self.root == 'cms':
             default_test_id += " {system}/tests/*"
