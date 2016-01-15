@@ -1544,6 +1544,10 @@ PIPELINE_JS = {
     'credit_wv': {
         'source_filenames': credit_web_view_js,
         'output_filename': 'js/credit/web_view.js'
+    },
+    'language_edx': {
+        'source_filenames': ['js/lang-edx.js', ],
+        'output_filename': 'js/lang-edx.js'
     }
 }
 
