@@ -308,18 +308,18 @@ class ThreadViewSetListTest(DiscussionAPIViewTestMixin, ModuleStoreTestCase):
         }]
         self.register_get_threads_response(source_threads, page=1, num_pages=2)
         response = self.client.get(self.url, {"course_id": unicode(self.course.id), "following": ""})
-        expected_respoonse = make_paginated_api_response(
+        expected_response = make_paginated_api_response(
             results=expected_threads,
-            count=0,
+            count=1,
             num_pages=2,
             next_link="http://testserver/api/discussion/v1/threads/?course_id=x%2Fy%2Fz&page=2",
             previous_link=None
         )
-        expected_respoonse.update({"text_search_rewrite": None})
+        expected_response.update({"text_search_rewrite": None})
         self.assert_response_correct(
             response,
             200,
-            expected_respoonse
+            expected_response
         )
         self.assert_last_query_params({
             "user_id": [unicode(self.user.id)],
@@ -954,7 +954,7 @@ class CommentViewSetListTest(DiscussionAPIViewTestMixin, ModuleStoreTestCase):
             response,
             200,
             make_paginated_api_response(
-                results=expected_comments, count=0, num_pages=10, next_link=next_link, previous_link=None
+                results=expected_comments, count=100, num_pages=10, next_link=next_link, previous_link=None
             )
         )
         self.assert_query_params_equal(
