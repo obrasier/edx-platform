@@ -1201,10 +1201,12 @@ class SplitMongoModuleStore(SplitBulkWriteMixin, ModuleStoreWriteBase):
         # don't expect caller to know that children are in fields
         if 'children' in qualifiers:
             settings['children'] = qualifiers.pop('children')
+
+        path_cache = {}
         for block_id, value in course.structure['blocks'].iteritems():
             if _block_matches_all(value):
                 if not include_orphans:
-                    if block_id.type in DETACHED_XBLOCK_TYPES or self.has_path_to_root(block_id, course):
+                    if block_id.type in DETACHED_XBLOCK_TYPES or self.has_path_to_root(block_id, course, path_cache):
                         items.append(block_id)
                 else:
                     items.append(block_id)
@@ -1214,22 +1216,36 @@ class SplitMongoModuleStore(SplitBulkWriteMixin, ModuleStoreWriteBase):
         else:
             return []
 
-    def has_path_to_root(self, block_key, course):
+    def has_path_to_root(self, block_key, course, path_cache=None):
         """
         Check recursively if an xblock has a path to the course root
 
         :param block_key: BlockKey of the component whose path is to be checked
         :param course: actual db json of course from structures
+        :param path_cache: a dictionary that records which modules have a path to the root so that we don't have to
+        double count modules if we're computing this for a list of modules in a course.
 
         :return Bool: whether or not component has path to the root
         """
 
+        if path_cache and block_key in path_cache:
+            return path_cache[block_key]
+
         xblock_parents = self._get_parents_from_structure(block_key, course.structure)
+
         if len(xblock_parents) == 0 and block_key.type in ["course", "library"]:
             # Found, xblock has the path to the root
+            if path_cache is not None:
+                path_cache[block_key] = True
+
             return True
 
-        return any(self.has_path_to_root(xblock_parent, course) for xblock_parent in xblock_parents)
+        has_path = any(self.has_path_to_root(xblock_parent, course, path_cache) for xblock_parent in xblock_parents)
+
+        if path_cache is not None:
+            path_cache[block_key] = has_path
+
+        return has_path
 
     def get_parent_location(self, locator, **kwargs):
         """
