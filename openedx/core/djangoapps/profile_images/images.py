@@ -3,10 +3,12 @@ Image file manipulation functions related to profile images.
 """
 from cStringIO import StringIO
 from collections import namedtuple
+from contextlib import closing
 
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils.translation import ugettext as _
+import piexif
 from PIL import Image
 
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_storage
@@ -127,7 +129,33 @@ def validate_uploaded_image(uploaded_file):
     uploaded_file.seek(0)
 
 
-def _get_scaled_image_file(image_obj, size):
+def _crop_image_to_square(image):
+    """
+    Given a PIL.Image object, return a copy cropped to a square around the
+    center point with each side set to the size of the smaller dimension.
+    """
+    width, height = image.size
+    if width != height:
+        side = width if width < height else height
+        image = image.crop(((width - side) / 2, (height - side) / 2, (width + side) / 2, (height + side) / 2))
+    return image
+
+
+def _set_color_mode_to_rgb(image_obj):
+    if image_obj.mode != 'RGB':
+        return image_obj.convert('RGB')
+    else:
+        return image_obj
+
+
+def _scale_image(image, size):
+    """
+    Given a PIL.Image object, get a resized copy using `size` (square)
+    """
+    return image.resize((size, size), Image.ANTIALIAS)
+
+
+def _create_image_file(image_obj):
     """
     Given a PIL.Image object, get a resized copy using `size` (square) and
     return a file-like object containing the data saved as a JPEG.
@@ -135,13 +163,17 @@ def _get_scaled_image_file(image_obj, size):
     Note that the file object returned is a django ContentFile which holds
     data in memory (not on disk).
     """
-    if image_obj.mode != "RGB":
-        image_obj = image_obj.convert("RGB")
-    scaled = image_obj.resize((size, size), Image.ANTIALIAS)
     string_io = StringIO()
-    scaled.save(string_io, format='JPEG')
+    image_obj.save(string_io, format='JPEG')
     image_file = ContentFile(string_io.getvalue())
     return image_file
+
+
+def _get_exif_orientation(image):
+    """Return the orientation value for the given Image object"""
+    if 'exif' in image.info:
+        return image.info['exif']['0th'].get(piexif.ImageIFD.Orientation)
+
 
 
 def create_profile_images(image_file, profile_image_names):
@@ -152,20 +184,14 @@ def create_profile_images(image_file, profile_image_names):
     """
     image_obj = Image.open(image_file)
 
-    # first center-crop the image if needed (but no scaling yet).
-    width, height = image_obj.size
-    if width != height:
-        side = width if width < height else height
-        image_obj = image_obj.crop(((width - side) / 2, (height - side) / 2, (width + side) / 2, (height + side) / 2))
+    image_obj = _set_color_mode_to_rgb(image_obj)
+    image_obj = _crop_image_to_square(image_obj)
 
     storage = get_profile_image_storage()
     for size, name in profile_image_names.items():
-        scaled_image_file = _get_scaled_image_file(image_obj, size)
-        # Store the file.
-        try:
+        scaled = _scale_image(image_obj, size)
+        with closing(_create_image_file(scaled)) as scaled_image_file:
             storage.save(name, scaled_image_file)
-        finally:
-            scaled_image_file.close()
 
 
 def remove_profile_images(profile_image_names):
