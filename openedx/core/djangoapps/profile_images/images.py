@@ -120,13 +120,6 @@ def validate_uploaded_image(uploaded_file):
     uploaded_file.seek(0)
 
 
-def _get_valid_file_types():
-    """
-    Return comma separated string of valid file types.
-    """
-    return ', '.join([', '.join(IMAGE_TYPES[ft].extensions) for ft in IMAGE_TYPES.keys()])
-
-
 def _crop_image_to_square(image):
     """
     Given a PIL.Image object, return a copy cropped to a square around the
@@ -167,7 +160,7 @@ def _create_image_file(image_obj, exif):
     in memory (not on disk).
     """
     string_io = StringIO()
-    image_obj.save(string_io, format='JPEG')
+    image_obj.save(string_io, format='JPEG', exif=exif)
     image_file = ContentFile(string_io.getvalue())
     return image_file
 
@@ -199,6 +192,13 @@ def _get_exif_orientation(exif):
     """Return the orientation value for the given Image object"""
     exif_dict = piexif.load(exif)
     return exif_dict['0th'].get(piexif.ImageIFD.Orientation)
+
+
+def _get_valid_file_types():
+    """
+    Return comma separated string of valid file types.
+    """
+    return ', '.join([', '.join(IMAGE_TYPES[ft].extensions) for ft in IMAGE_TYPES.keys()])
 
 
 def _user_friendly_size(size):
