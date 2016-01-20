@@ -15,12 +15,12 @@ import ddt
 import mock
 from PIL import Image
 
+from ..exceptions import ImageValidationError
 from ..images import (
     create_profile_images,
-    ImageValidationError,
     remove_profile_images,
     validate_uploaded_image,
-    get_valid_file_types,
+    _get_valid_file_types,
 )
 from .helpers import make_image_file, make_uploaded_file
 
@@ -33,7 +33,7 @@ class TestValidateUploadedImage(TestCase):
     """
     FILE_UPLOAD_BAD_TYPE = (
         u'The file must be one of the following types: {valid_file_types}.'.format(
-            valid_file_types=get_valid_file_types()
+            valid_file_types=_get_valid_file_types()
         )
     )
 

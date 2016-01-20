@@ -12,6 +12,7 @@ import piexif
 from PIL import Image
 
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_storage
+from .exceptions import ImageValidationError
 
 
 ImageType = namedtuple('ImageType', ('extensions', 'mimetypes', 'magic'))
@@ -53,24 +54,32 @@ def user_friendly_size(size):
     return u'{} {}'.format(size, units[i])
 
 
-def get_valid_file_types():
+def create_profile_images(image_file, profile_image_names):
     """
-    Return comma separated string of valid file types.
+    Generates a set of image files based on image_file and
+    stores them according to the sizes and filenames specified
+    in `profile_image_names`.
     """
-    return ', '.join([', '.join(IMAGE_TYPES[ft].extensions) for ft in IMAGE_TYPES.keys()])
+    storage = get_profile_image_storage()
+
+    original = Image.open(image_file)
+    image = _set_color_mode_to_rgb(original)
+    image = _crop_image_to_square(image)
+
+    for size, name in profile_image_names.items():
+        scaled = _scale_image(image, size)
+        exif = _get_corrected_exif(scaled, original)
+        with closing(_create_image_file(scaled, exif)) as scaled_image_file:
+            storage.save(name, scaled_image_file)
 
 
-class ImageValidationError(Exception):
+def remove_profile_images(profile_image_names):
     """
-    Exception to use when the system rejects a user-supplied source image.
+    Physically remove the image files specified in `profile_image_names`
     """
-    @property
-    def user_message(self):
-        """
-        Translate the developer-facing exception message for API clients.
-        """
-        # pylint: disable=translation-of-non-string
-        return _(self.message)
+    storage = get_profile_image_storage()
+    for name in profile_image_names.values():
+        storage.delete(name)
 
 
 def validate_uploaded_image(uploaded_file):
@@ -105,7 +114,7 @@ def validate_uploaded_image(uploaded_file):
     if not filetype:
         file_upload_bad_type = _(
             u'The file must be one of the following types: {valid_file_types}.'
-        ).format(valid_file_types=get_valid_file_types())
+        ).format(valid_file_types=_get_valid_file_types())
         raise ImageValidationError(file_upload_bad_type)
     filetype = filetype[0]
 
@@ -129,6 +138,13 @@ def validate_uploaded_image(uploaded_file):
     uploaded_file.seek(0)
 
 
+def _get_valid_file_types():
+    """
+    Return comma separated string of valid file types.
+    """
+    return ', '.join([', '.join(IMAGE_TYPES[ft].extensions) for ft in IMAGE_TYPES.keys()])
+
+
 def _crop_image_to_square(image):
     """
     Given a PIL.Image object, return a copy cropped to a square around the
@@ -137,31 +153,36 @@ def _crop_image_to_square(image):
     width, height = image.size
     if width != height:
         side = width if width < height else height
-        image = image.crop(((width - side) / 2, (height - side) / 2, (width + side) / 2, (height + side) / 2))
+        left = (width - side) // 2
+        top = (height - side) // 2
+        right = (width + side) // 2
+        bottom = (height + side) // 2
+        image = image.crop((left, top, right, bottom))
     return image
 
 
-def _set_color_mode_to_rgb(image_obj):
-    if image_obj.mode != 'RGB':
-        return image_obj.convert('RGB')
-    else:
-        return image_obj
+def _set_color_mode_to_rgb(image):
+    """
+    Given a PIL.Image object, return a copy with the color mode set to RGB.
+    """
+    return image.convert('RGB')
 
 
 def _scale_image(image, size):
     """
-    Given a PIL.Image object, get a resized copy using `size` (square)
+    Given a PIL.Image object, get a resized copy with each side being `size`
+    pixels long.  The scaled image will always be square.
     """
     return image.resize((size, size), Image.ANTIALIAS)
 
 
-def _create_image_file(image_obj):
+def _create_image_file(image_obj, exif):
     """
-    Given a PIL.Image object, get a resized copy using `size` (square) and
-    return a file-like object containing the data saved as a JPEG.
+    Given a PIL.Image object, and return a file-like object containing the data
+    saved as a JPEG.
 
-    Note that the file object returned is a django ContentFile which holds
-    data in memory (not on disk).
+    Note that the file object returned is a django ContentFile which holds data
+    in memory (not on disk).
     """
     string_io = StringIO()
     image_obj.save(string_io, format='JPEG')
@@ -169,35 +190,30 @@ def _create_image_file(image_obj):
     return image_file
 
 
-def _get_exif_orientation(image):
-    """Return the orientation value for the given Image object"""
+def _get_corrected_exif(image, original):
+    """
+    If the original image contains exif data, use that data to
+    preserve image orientation in the new image.
+    """
     if 'exif' in image.info:
-        return image.info['exif']['0th'].get(piexif.ImageIFD.Orientation)
+        image_exif = image.info['exif']
+        if 'exif' in image.info:
+            original_exif = original.info['exif']
+            image_exif = _update_exif_orientation(image_exif, _get_exif_orientation(original_exif))
+        return image_exif
 
 
-
-def create_profile_images(image_file, profile_image_names):
+def _update_exif_orientation(exif, orientation):
     """
-    Generates a set of image files based on image_file and
-    stores them according to the sizes and filenames specified
-    in `profile_image_names`.
+    Given an exif value and an integer value 1-8, reflecting a valid value for
+    the exif orientation, return a new exif with the orientation set.
     """
-    image_obj = Image.open(image_file)
-
-    image_obj = _set_color_mode_to_rgb(image_obj)
-    image_obj = _crop_image_to_square(image_obj)
-
-    storage = get_profile_image_storage()
-    for size, name in profile_image_names.items():
-        scaled = _scale_image(image_obj, size)
-        with closing(_create_image_file(scaled)) as scaled_image_file:
-            storage.save(name, scaled_image_file)
+    exif_dict = piexif.load(exif)
+    exif_dict['0th'][piexif.ImageIFD.Orientation] = orientation
+    return piexif.dump(exif_dict)
 
 
-def remove_profile_images(profile_image_names):
-    """
-    Physically remove the image files specified in `profile_image_names`
-    """
-    storage = get_profile_image_storage()
-    for name in profile_image_names.values():
-        storage.delete(name)
+def _get_exif_orientation(exif):
+    """Return the orientation value for the given Image object"""
+    exif_dict = piexif.load(exif)
+    return exif_dict['0th'].get(piexif.ImageIFD.Orientation)
