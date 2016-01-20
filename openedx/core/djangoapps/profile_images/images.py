@@ -36,24 +36,6 @@ IMAGE_TYPES = {
 }
 
 
-def user_friendly_size(size):
-    """
-    Convert size in bytes to user friendly size.
-
-    Arguments:
-        size (int): size in bytes
-
-    Returns:
-        user friendly size
-    """
-    units = [_('bytes'), _('KB'), _('MB')]
-    i = 0
-    while size >= 1024:
-        size /= 1024
-        i += 1
-    return u'{} {}'.format(size, units[i])
-
-
 def create_profile_images(image_file, profile_image_names):
     """
     Generates a set of image files based on image_file and
@@ -97,14 +79,14 @@ def validate_uploaded_image(uploaded_file):
         file_upload_too_large = _(
             u'The file must be smaller than {image_max_size} in size.'
         ).format(
-            image_max_size=user_friendly_size(settings.PROFILE_IMAGE_MAX_BYTES)
+            image_max_size=_user_friendly_size(settings.PROFILE_IMAGE_MAX_BYTES)
         )
         raise ImageValidationError(file_upload_too_large)
     elif uploaded_file.size < settings.PROFILE_IMAGE_MIN_BYTES:
         file_upload_too_small = _(
             u'The file must be at least {image_min_size} in size.'
         ).format(
-            image_min_size=user_friendly_size(settings.PROFILE_IMAGE_MIN_BYTES)
+            image_min_size=_user_friendly_size(settings.PROFILE_IMAGE_MIN_BYTES)
         )
         raise ImageValidationError(file_upload_too_small)
 
@@ -217,3 +199,23 @@ def _get_exif_orientation(exif):
     """Return the orientation value for the given Image object"""
     exif_dict = piexif.load(exif)
     return exif_dict['0th'].get(piexif.ImageIFD.Orientation)
+
+
+def _user_friendly_size(size):
+    """
+    Convert size in bytes to user friendly size.
+
+    Arguments:
+        size (int): size in bytes
+
+    Returns:
+        user friendly size
+    """
+    units = [_('bytes'), _('KB'), _('MB')]
+    i = 0
+    while size >= 1024:
+        size /= 1024
+        i += 1
+    return u'{} {}'.format(size, units[i])
+
+
