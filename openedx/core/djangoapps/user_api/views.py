@@ -157,7 +157,7 @@ class RegistrationView(APIView):
     
     """HTTP end-points for creating a new user. """
 
-    DEFAULT_FIELDS = ["email", "email_confirm", "name", "username", "password", "password_confirm"]
+    DEFAULT_FIELDS = ["email", "email_confirm", "first_name", "last_name", "username", "password", "password_confirm"]
 
     EXTRA_FIELDS = [
         "city",
@@ -435,6 +435,74 @@ class RegistrationView(APIView):
             },
             required=required
         )
+
+    def _add_first_name_field(self, form_desc, required=True):
+        """Add a name field to a form description.
+
+        Arguments:
+            form_desc: A form description
+
+        Keyword Arguments:
+            required (bool): Whether this field is required; defaults to True
+
+        """
+        # Translators: This label appears above a field on the registration form
+        # meant to hold the user's full name.
+        name_label = _(u"First name")
+
+        # Translators: This example name is used as a placeholder in
+        # a field on the registration form meant to hold the user's name.
+        name_placeholder = _(u"Jane")
+
+        # Translators: These instructions appear on the registration form, immediately
+        # below a field meant to hold the user's full name.
+        name_instructions = _(u"Your legal first name, used for any certificates you earn.")
+
+        form_desc.add_field(
+            "first_name",
+            label=name_label,
+            placeholder=name_placeholder,
+            instructions=name_instructions,
+            restrictions={
+                "max_length": NAME_MAX_LENGTH,
+            },
+            required=required
+        )
+
+    def _add_last_name_field(self, form_desc, required=True):
+        """Add a name field to a form description.
+
+        Arguments:
+            form_desc: A form description
+
+        Keyword Arguments:
+            required (bool): Whether this field is required; defaults to True
+
+        """
+        # Translators: This label appears above a field on the registration form
+        # meant to hold the user's full name.
+        name_label = _(u"Last name")
+
+        # Translators: This example name is used as a placeholder in
+        # a field on the registration form meant to hold the user's name.
+        name_placeholder = _(u"Doe")
+
+        # Translators: These instructions appear on the registration form, immediately
+        # below a field meant to hold the user's full name.
+        name_instructions = _(u"Your legal family name, used for any certificates you earn.")
+
+        form_desc.add_field(
+            "last_name",
+            label=name_label,
+            placeholder=name_placeholder,
+            instructions=name_instructions,
+            restrictions={
+                "max_length": NAME_MAX_LENGTH,
+            },
+            required=required
+        )
+
+
 
     def _add_username_field(self, form_desc, required=True):
         """Add a username field to a form description.

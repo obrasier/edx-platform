@@ -1481,6 +1481,8 @@ def _do_create_account(form, custom_form=None):
     user = User(
         username=form.cleaned_data["username"],
         email=form.cleaned_data["email"],
+        first_name=form.cleaned_data["first_name"],
+        last_name=form.cleaned_data["last_name"],
         is_active=False
     )
     user.set_password(form.cleaned_data["password"])
@@ -1516,14 +1518,19 @@ def _do_create_account(form, custom_form=None):
     password_history_entry.create(user)
 
     registration.register(user)
+    
+    first_name = form.cleaned_data["first_name"]
+    last_name = form.cleaned_data["last_name"]
 
     profile_fields = [
-        "name", "level_of_education", "gender", "mailing_address", "city", "country", "goals",
+        "level_of_education", "gender", "mailing_address", "city", "country", "goals",
         "year_of_birth"
     ]
     profile = UserProfile(
         user=user,
+        name=first_name+' '+last_name,
         **{key: form.cleaned_data.get(key) for key in profile_fields}
+    
     )
     extended_profile = form.cleaned_extended_profile
     if extended_profile:
@@ -1772,7 +1779,8 @@ def create_account_with_params(request, params):
             log.error(u'Unable to send activation email to user from "%s"', from_address, exc_info=True)
     else:
         registration.activate()
-
+    
+    # ----- REMOVED THIS ------
     # Immediately after a user creates an account, we log them in. They are only
     # logged in until they close the browser. They can't log in again until they click
     # the activation link from the email.
