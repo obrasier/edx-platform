@@ -109,9 +109,11 @@ class TrueField(forms.BooleanField):
 
 _USERNAME_TOO_SHORT_MSG = _("Username must be minimum of two characters long")
 _EMAIL_INVALID_MSG = _("A properly formatted e-mail is required")
+_EMAIL_CONFIRM_INVALID_MSG = _("Please enter your e-mail twice")
 _PASSWORD_INVALID_MSG = _("A valid password is required")
 _NAME_TOO_SHORT_MSG = _("Your legal name must be a minimum of two characters long")
-
+_PASSWORD_DOES_NOT_MATCH = _("Your password fields do not match")
+_PASSWORD_CONFIRM_INVALID_MSG = _("Please enter your password twice")
 
 class AccountCreationForm(forms.Form):
     """
@@ -137,11 +139,22 @@ class AccountCreationForm(forms.Form):
             "max_length": _("Email cannot be more than %(limit_value)s characters long"),
         }
     )
+    email_confirm = forms.EmailField(
+        max_length=75,  # Limit per RFCs is 254, but User's email field in django 1.4 only takes 75
+        error_messages={
+            "required": _EMAIL_CONFIRM_INVALID_MSG,
+        }
+    )
     password = forms.CharField(
         min_length=2,
         error_messages={
             "required": _PASSWORD_INVALID_MSG,
             "min_length": _PASSWORD_INVALID_MSG,
+        }
+    )
+    password_confirm = forms.CharField(
+        error_messages={
+            "required": _PASSWORD_CONFIRM_INVALID_MSG,
         }
     )
     name = forms.CharField(
@@ -210,7 +223,14 @@ class AccountCreationForm(forms.Form):
         for field in self.extended_profile_fields:
             if field not in self.fields:
                 self.fields[field] = forms.CharField(required=False)
-
+    
+    def clean_email_confirm(self):
+        email = self.cleaned_data["email"]
+        email_confirm = self.cleaned_data["email_confirm"]
+        if email and email != email_confirm:
+            raise ValidationError(_("E-mail fields don't match"))
+        return email_confirm
+        
     def clean_password(self):
         """Enforce password policies (if applicable)"""
         password = self.cleaned_data["password"]
@@ -244,6 +264,12 @@ class AccountCreationForm(forms.Form):
                 if not CourseEnrollmentAllowed.objects.filter(email=email).exists():
                     raise ValidationError(_("Unauthorized email address."))
         return email
+    def clean_password_confirm(self):
+        password = self.cleaned_data["password"]
+        password_confirm = self.cleaned_data["password_confirm"]
+        if password and password != password_confirm:
+            raise ValidationError(_("Password fields don't match"))
+        return password_confirm
 
     def clean_year_of_birth(self):
         """

@@ -154,9 +154,10 @@ class LoginSessionView(APIView):
 
 
 class RegistrationView(APIView):
+    
     """HTTP end-points for creating a new user. """
 
-    DEFAULT_FIELDS = ["email", "name", "username", "password"]
+    DEFAULT_FIELDS = ["email", "email_confirm", "name", "username", "password", "password_confirm"]
 
     EXTRA_FIELDS = [
         "city",
@@ -375,6 +376,33 @@ class RegistrationView(APIView):
             required=required
         )
 
+    def _add_email_confirm_field(self, form_desc, required=True):
+        """Add an email field to a form description.
+
+        Arguments:
+            form_desc: A form description
+
+        Keyword Arguments:
+            required (bool): Whether this field is required; defaults to True
+
+        """
+        # Translators: This label appears above a field on the registration form
+        # meant to hold the user's email address.
+        email_label = _(u"Email (again)")
+
+        # Translators: This example email address is used as a placeholder in
+        # a field on the registration form meant to hold the user's email address.
+        email_placeholder = _(u"username@domain.com")
+
+        form_desc.add_field(
+            "email_confirm",
+            field_type="email",
+            label=email_label,
+            placeholder=email_placeholder,
+            required=required
+        )
+
+
     def _add_name_field(self, form_desc, required=True):
         """Add a name field to a form description.
 
@@ -469,6 +497,28 @@ class RegistrationView(APIView):
             },
             required=required
         )
+
+    def _add_password_confirm_field(self, form_desc, required=True):
+        """Add a password confirm field to a form description.
+
+        Arguments:
+            form_desc: A form description
+
+        Keyword Arguments:
+            required (bool): Whether this field is required; defaults to True
+
+        """
+        # Translators: This label appears above a field on the registration form
+        # meant to hold the user's password.
+        password_label = _(u"Password Confirm")
+
+        form_desc.add_field(
+            "password_confirm",
+            label=password_label,
+            field_type="password",
+            required=required
+        )
+
 
     def _add_level_of_education_field(self, form_desc, required=True):
         """Add a level of education field to a form description.
