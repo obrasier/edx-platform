@@ -27,3 +27,11 @@
 <div class="section-bkg-wrapper">
     <div id="login-and-registration-container" class="login-register" />
 </div>
+
+<div class="dashboard-notifications" tabindex="-1">
+    %if message:
+        <section class="dashboard-banner">
+            ${message}
+        </section>
+    %endif
+</div>
