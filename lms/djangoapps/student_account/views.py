@@ -68,15 +68,7 @@ def login_and_registration_form(request, initial_mode="login"):
     if request.user.is_authenticated() and request.user.is_active:
         return redirect(redirect_to)
     
-    message = ""
-    if not request.user.is_active and request.user.is_authenticated():
-        message = render_to_string(
-            'registration/activate_account_notice.html',
-            {'email': request.user.email, 'platform_name': settings.PLATFORM_NAME}
-        )
-        response = logout(request)
-        delete_logged_in_cookies(response)
-        
+       
 
     # Retrieve the form descriptions from the user API
     form_descriptions = _get_form_descriptions(request)
@@ -131,10 +123,26 @@ def login_and_registration_form(request, initial_mode="login"):
         'allow_iframing': True,
         'disable_courseware_js': True,
         'disable_footer': True,
-        'message': message,
+        #'message': message,
     }
-
-    return render_to_response('student_account/login_and_register.html', context)
+    
+    message = ""
+    if not request.user.is_active and request.user.is_authenticated():
+        #context['message'] = "verify your e-mail address"
+        message = render_to_string(
+            'registration/activate_account_notice.html',
+            {'email': request.user.email, 'platform_name': settings.PLATFORM_NAME}
+        )
+        context['message'] = message
+        logout(request)
+    
+    response = render_to_response('student_account/login_and_register.html', context)
+    
+    if not request.user.is_active and request.user.is_authenticated():
+        response = delete_logged_in_cookies(response)
+    
+    return response 
+    #return render_to_response('student_account/login_and_register.html', context)
 
 
 @require_http_methods(['POST'])

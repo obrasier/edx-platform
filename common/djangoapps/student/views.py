@@ -584,7 +584,7 @@ def dashboard(request):
     course_optouts = Optout.objects.filter(user=user).values_list('course_id', flat=True)
 
     if not user.is_active:
-        response = reverse("signin_user") 
+        response = redirect("signin_user") 
         return response
         
 
@@ -703,7 +703,7 @@ def dashboard(request):
         'redirect_message': redirect_message,
         'course_enrollments': course_enrollments,
         'course_optouts': course_optouts,
-        'message': message,
+        #'message': message,
         'staff_access': staff_access,
         'errored_courses': errored_courses,
         'show_courseware_links_for': show_courseware_links_for,
