@@ -55,6 +55,11 @@ from util.model_utils import emit_field_changed_events, get_changed_fields_dict
 from util.query import use_read_replica_if_available
 from util.milestones_helpers import is_entrance_exams_enabled
 
+# NEW FEATURE: Australian Teacher and Classes Tier
+from localflavor.au.models import AUPhoneNumberField, AUStateField, AUPostCodeField
+import struct
+from Crypto.Cipher import DES
+from .utils import base36encode, base36decode
 
 UNENROLL_DONE = Signal(providing_args=["course_enrollment", "skip_refund"])
 log = logging.getLogger(__name__)
@@ -2088,3 +2093,217 @@ class EnrollmentRefundConfiguration(ConfigurationModel):
     def refund_window(self, refund_window):
         """Set the current refund window to the given timedelta."""
         self.refund_window_microseconds = int(refund_window.total_seconds() * 1000000)
+
+
+
+
+# NEW FEATURE: Australian Teacher and Classes Tier
+
+class StudentProfile(models.Model):
+    """
+    This model contains two extra fields that will be saved when a user registers.
+    The form that wraps this model is in the forms.py file.
+    """
+    user = models.OneToOneField(User, 
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    
+    this_year = datetime.now(UTC).year
+    VALID_YEARS = range(this_year, this_year - 120, -1)
+    year_of_birth = models.IntegerField(blank=True, null=True, db_index=True)
+
+    #aboriginal or torres strait islander
+    indigenous = models.BooleanField(
+        default=False,
+    )    
+    classSet = models.ManyToManyField('ClassSet')
+
+class TeacherProfile(models.Model):
+    """
+    This model contains fields for teacher contact and survey information
+    """
+    user = models.OneToOneField(User, 
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+
+    school = models.ForeignKey('School',null=True)
+    
+    phone = AUPhoneNumberField(
+        null = True,
+    )
+
+    HEAR_FROM = (
+        ('MM','Participated in MadMaker 2015'),
+        ('FR','Friend'),
+        ('FA','Family Member'),
+        ('CO','Colleague'),
+        ('SY','Sydney Uni Marketing & Comms'),
+        ('SM','Social Media'), 
+        ('SE','Search Engine'), 
+        ('CE','Conference or Event'),
+        ('O','Other'), 
+    )
+    hear_about_us = models.CharField(
+        max_length=2,
+        choices = HEAR_FROM,
+        null = True,
+        blank = True,
+    )
+    
+class School(models.Model):
+    """
+    #This model contains school names and information
+    """
+    acara_id = models.IntegerField(unique=True,primary_key=False)
+
+    school_name = models.CharField(
+        max_length=100,
+    )
+
+    street_address = models.CharField(
+        max_length = 100,
+    )
+    
+    suburb = models.CharField(
+        max_length = 100,
+    )
+    
+    state = AUStateField()
+
+    postcode = AUPostCodeField()
+    
+    SCHOOL_SECTORS=(
+        ('G','Government'),
+        ('C','Catholic'),
+        ('I','Independent'),
+    )
+    
+    school_sector =  models.CharField(
+        max_length=1,
+        choices = SCHOOL_SECTORS,
+    ) 
+
+    SCHOOL_TYPES = (
+        ('P','Primary'),
+        ('S','Secondary'),
+        ('C','Combined'),
+        ('O','Special'),
+    )
+    
+    school_type = models.CharField(
+        max_length=1,
+        choices = SCHOOL_TYPES,
+    )
+
+    def __unicode__(self):              # __str__ on Python 3
+        display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state)]
+        return ', '.join(display)
+
+
+class EncryptedPKModelManager(models.Manager):
+    """This manager allows models to be identified based on their encrypted_pk value."""
+
+    def get(self, *args, **kwargs):
+        encrypted_pk = kwargs.pop('encrypted_pk', None)
+        if encrypted_pk:
+            # If found, decrypt encrypted_pk argument and set pk argument to the appropriate value
+            encryption_obj = DES.new(self.model.PK_SECRET_KEY) # This 8 character secret key should be changed!
+            kwargs['pk'] = struct.unpack('<Q', encryption_obj.decrypt(
+                struct.pack('<Q', base36decode(encrypted_pk))
+            ))[0]
+
+        return super(EncryptedPKManager, self).get(*args, **kwargs)
+
+
+class EncryptedPKModel(models.Model):
+    """Adds encrypted_pk property to children which returns the encrypted value of the primary key."""
+
+    def __init__(self, *args, **kwargs):
+        super(EncryptedPKModel, self).__init__(*args, **kwargs)
+        setattr(
+            self.__class__,
+            "encrypted_%s" % (self._meta.pk.name,),
+            property(self.__class__._encrypted_pk)
+        )   
+
+    def _encrypted_pk(self):
+        encryption_obj = DES.new(self.PK_SECRET_KEY) # This 8 character secret key should be changed!
+        return base36encode(struct.unpack('<Q', encryption_obj.encrypt(
+            str(struct.pack('<Q', self.pk))
+        ))[0])
+
+    encrypted_pk = property(_encrypted_pk)
+
+    class Meta:
+        abstract = True
+
+
+# Responsible for returning encrypted pk
+class ClassCodeManager(EncryptedPKModelManager):
+    pass
+
+class ClassSet(models.Model):
+    """
+    Class information for teachers.
+    """
+    created_by = models.ForeignKey(User,null=False,related_name='classes_created')
+    teacher = models.ForeignKey(User,null=False, related_name='classes_taught')
+    short_name =  models.CharField(max_length=12)         #for quick reference for teacher dashboard display
+    class_name = models.CharField(max_length=12)        #unique for public display
+    school = models.ForeignKey('School',null=False)
+    
+    course_id = CourseKeyField(db_index=True, max_length=255, blank=True) 
+    grade = models.ManyToManyField('SchoolGrade')
+    subject = models.ManyToManyField('Subject',null=False)
+    assessment = models.BooleanField(default=False)     #for survey purposes
+    
+    PK_SECRET_KEY = '53cR3tk3Y'
+    class_code_manager = ClassCodeManager()             #encrypted pk for sharing
+    
+    def __unicode__(self):              # __str__ on Python 3
+        return self.short_name
+
+class ClassTime(models.Model):
+    """
+    For rostering tutors on for chat help
+    """
+    classSet = models.ForeignKey(ClassSet,null=False)
+    time_from = models.TimeField()
+    time_to = models.TimeField()
+   
+    WEEKDAYS = (
+        ('MON','Monday'),
+        ('TUE','Tuesday'),
+        ('WED','Wednesday'),
+        ('THU','Thursday'),
+        ('FRI','Friday'),
+    )
+    day = models.CharField(max_length=3,choices=WEEKDAYS) 
+    
+    TIMEZONES = (
+       ('AEST','Australian Eastern Standard Time'),
+       ('AEDT','Australian Eastern Daylight Time'),
+       ('ACST','Australian Central Standard Time'),
+       ('ACDT','Australian Central Daylight Time'),
+       ('AWST','Australian Western Standard Time'),
+    )
+
+    timezone = models.CharField(max_length=4,choices=TIMEZONES)                       #watchout for timezones 
+    
+    comments = models.CharField(max_length=100,blank=True,null=True)                       #incase of week A week B
+
+
+class SchoolGrade(models.Model):
+    """
+    School grade level. Would have made some more strict choices, 
+    but would like to see what "other" options get created. "default_list"
+    determines whether the school grades should be listed in the form.
+    """
+    description = models.CharField(max_length=12,null=False)
+    default_list = models.BooleanField(default=False)
+
+class Subject(models.Model):
+    description = models.CharField(max_length=12)
+    default_list = models.BooleanField(default=False)
