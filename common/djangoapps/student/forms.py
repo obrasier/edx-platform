@@ -24,6 +24,10 @@ from util.password_policy_validators import (
     validate_password_complexity,
     validate_password_dictionary,
 )
+from student.models import StudentProfile, TeacherProfile, School
+from localflavor.au.forms import AUStateSelect, AUPhoneNumberField, AUPostCodeField
+from localflavor.au import au_states
+
 
 
 class PasswordResetFormNoActive(PasswordResetForm):
@@ -178,6 +182,10 @@ class AccountCreationForm(forms.Form):
             "min_length": _NAME_TOO_SHORT_MSG,
         }
     )
+    reg_type = forms.ChoiceField(
+        widget = forms.RadioSelect,
+        choices = ((1,'Student'),(2,'Teacher')),
+    )
 
 
     def __init__(
@@ -322,3 +330,73 @@ def get_registration_extension_form(*args, **kwargs):
     module, klass = settings.REGISTRATION_EXTENSION_FORM.rsplit('.', 1)
     module = import_module(module)
     return getattr(module, klass)(*args, **kwargs)
+
+class StudentRegistrationForm(forms.Form):
+    # aboriginal or torres strait islander
+    indigenous = forms.BooleanField(
+        error_messages = {
+            "invalid" : _("Invalid Boolean input")
+        }
+    )
+    
+    # class code
+    class_code = forms.CharField(
+        max_length = 8,
+        min_length = 8,
+        error_messages={
+            "min_length" :  _("Your class code is 8 characters long"),
+            "max_length" :  _("Your class code is 8 characters long"),
+            "invalid" : _("Your class code contains only letters (A-Z) and numbers (0-9)"),
+        }
+    )
+    
+    # validate classcode is 8 characters long with A_Z0-9
+    def clean_class_code(self):
+        class_code = self.cleaned_data["class_code"].upper()
+        return class_code
+   
+
+class TeacherRegistrationForm(forms.Form):
+    
+    # school name
+    school_name = forms.CharField(
+        max_length = 100,
+        required = True,
+    )
+
+    # contact phone number
+    phone = AUPhoneNumberField()
+
+    # how did you hear about us
+    HEAR_FROM = TeacherProfile.HEAR_FROM
+    hear_about_us = forms.CharField()
+    ##validators
+
+class SchoolRegistrationForm(forms.Form):
+
+    # school address
+    street_address = forms.CharField(
+        max_length = 30,
+    )
+    suburb = forms.CharField(
+        max_length = 30,
+    )
+    state = AUStateSelect()
+    postcode = AUPostCodeField()
+
+    
+
+#class ExtraInfoForm(ModelForm):
+#    """
+#    The fields on this form are derived from the ExtraInfo model in models.py.
+#    """
+#    def __init__(self, *args, **kwargs):
+#        super(ExtraInfoForm, self).__init__(*args, **kwargs)
+#        self.fields['favorite_movie'].error_messages = {
+#            "required": u"Please tell us your favorite movie.",
+#            "invalid": u"We're pretty sure you made that movie up.",
+#        }
+#
+#    class Meta(object):
+#        model = ExtraInfo
+#        fields = ('favorite_editor', 'favorite_movie','indigenous')
