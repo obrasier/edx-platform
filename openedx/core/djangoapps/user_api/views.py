@@ -25,7 +25,7 @@ from openedx.core.lib.api.permissions import ApiKeyHeaderPermission
 import third_party_auth
 from django_comment_common.models import Role
 from edxmako.shortcuts import marketing_link
-from student.forms import get_registration_extension_form
+from student.forms import get_registration_extension_form, StudentRegistrationForm, TeacherRegistrationForm
 from student.views import create_account_with_params
 from student.cookies import set_logged_in_cookies
 from openedx.core.lib.api.authentication import SessionAuthenticationAllowInactiveUser
@@ -39,7 +39,7 @@ from .accounts import (
 )
 from .accounts.api import check_account_exists
 from .serializers import UserSerializer, UserPreferenceSerializer
-
+from student.models import StudentProfile, TeacherProfile, School
 
 class LoginSessionView(APIView):
     """HTTP end-points for logging in users. """
@@ -157,8 +157,11 @@ class RegistrationView(APIView):
     
     """HTTP end-points for creating a new user. """
 
-    DEFAULT_FIELDS = ["email", "email_confirm", "first_name", "last_name", "username", "password", "password_confirm"]
+    DEFAULT_FIELDS = ["reg_type","email", "email_confirm", "first_name", "last_name", "username", "password", "password_confirm"]
 
+    STUDENT_FIELDS = ["indigenous","school_grade","classcode"]
+
+    TEACHER_FIELDS = ["school","school_id","phone","hear_about_us"]
     EXTRA_FIELDS = [
         "city",
         "country",
@@ -199,7 +202,7 @@ class RegistrationView(APIView):
 
         # Map field names to the instance method used to add the field to the form
         self.field_handlers = {}
-        for field_name in self.DEFAULT_FIELDS + self.EXTRA_FIELDS:
+        for field_name in self.DEFAULT_FIELDS + self.EXTRA_FIELDS + self.STUDENT_FIELDS + self.TEACHER_FIELDS :
             handler = getattr(self, "_add_{field_name}_field".format(field_name=field_name))
             self.field_handlers[field_name] = handler
 
@@ -231,6 +234,9 @@ class RegistrationView(APIView):
         # Default fields are always required
         for field_name in self.DEFAULT_FIELDS:
             self.field_handlers[field_name](form_desc, required=True)
+
+        for field_name in self.STUDENT_FIELDS + self.TEACHER_FIELDS:
+            self.field_handlers[field_name](form_desc)
 
         # Custom form fields can be added via the form set in settings.REGISTRATION_EXTENSION_FORM
         custom_form = get_registration_extension_form()
@@ -375,7 +381,20 @@ class RegistrationView(APIView):
             },
             required=required
         )
-
+    
+    def _add_reg_type_field(self,form_desc,required=True):
+        """
+        Add the reg_type to the form. Chooses between teacher or student.
+        """
+        reg_type_label = _("I am a:")
+        options = ((1,'Student'),(2,'Teacher'))
+        form_desc.add_field(
+            "reg_type",
+            field_type="select",
+            label=reg_type_label,
+            required=required,
+            options = options,
+        )
     def _add_email_confirm_field(self, form_desc, required=True):
         """Add an email field to a form description.
 
@@ -843,8 +862,112 @@ class RegistrationView(APIView):
             required=required,
             error_messages={
                 "required": error_msg
-            }
+            },
         )
+
+    #NEW: Fields for students
+    # required condition is handled by form validation
+    # changing default required will change the display of reqStr (*) but not validate
+    # in future we can make the required fields form the settings. 
+    # reg_type is used to know how to dynamically show sets of fields.
+
+    def _add_indigenous_field(self, form_desc, required=True):
+        label = _("Are you of Aboriginal or Torres Strait Islander origin?")
+        form_desc.add_field(
+            "indigenous",
+            label = label,
+            field_type = "select",
+            error_messages={
+                },
+            options=(
+                (False,'No'),
+                (True,'Yes'),
+            ),
+            reg_type=1,
+            required = required,
+        )
+
+    def _add_school_grade_field(self, form_desc, required=True):
+        label = _("School Grade")
+        instructions = _("What is your schooling level.") 
+        form_desc.add_field(
+            "school_grade",
+            field_type = "select",
+            options = StudentProfile.SCHOOL_GRADES,
+            label = label,
+            required = required,
+            restrictions = {
+            },
+            error_messages={
+                },
+            reg_type=1,
+            instructions = instructions,
+            include_default_option = True,
+        )
+
+
+    def _add_classcode_field(self, form_desc, required=True):
+        label = _("Class Code")
+        instructions = _("This should be provided by your supervising teacher.") 
+        form_desc.add_field(
+            "class_code",
+            label = label,
+            required = required,
+            restrictions = {
+            },
+            error_messages={
+                },
+            reg_type=1,
+            instructions = instructions,
+        )
+
+    def _add_school_field(self, form_desc, required=True):
+        label = _("School")
+        form_desc.add_field(
+            "school",
+            label = label,
+            required = required,
+            error_messages={
+                },
+            reg_type=2,
+            instructions=_("Lookup your school by name, suburb or postcode")
+        )
+    
+    def _add_school_id_field(self, form_desc, required=False):
+        form_desc.add_field(
+            "school_id",
+            field_type = "hidden",
+            required = required,
+            error_messages={
+                },
+            reg_type=2,
+        )
+    
+
+    def _add_phone_field(self, form_desc, required=True):
+        label = _("Contact Number")
+        form_desc.add_field(
+            "phone",
+            label = label,
+            error_messages={
+                },
+            reg_type=2,
+            required = required,
+        )
+    def _add_hear_about_us_field(self, form_desc, required=False):
+        label = _("")
+        form_desc.add_field(
+            "hear_about_us",
+            label = "How did you hear about us?",
+            field_type = "select",
+            required = required,
+            error_messages={
+                    'invalid': _("Invalid input")
+                },
+            reg_type=2,
+            options = TeacherProfile.HEAR_FROM,
+        )
+
 
     def _apply_third_party_auth_overrides(self, request, form_desc):
         """Modify the registration form if the user has authenticated with a third-party provider.

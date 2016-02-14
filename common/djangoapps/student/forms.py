@@ -27,7 +27,7 @@ from util.password_policy_validators import (
 from student.models import StudentProfile, TeacherProfile, School
 from localflavor.au.forms import AUStateSelect, AUPhoneNumberField, AUPostCodeField
 from localflavor.au import au_states
-
+from django.core.validators import RegexValidator
 
 
 class PasswordResetFormNoActive(PasswordResetForm):
@@ -118,6 +118,7 @@ _PASSWORD_INVALID_MSG = _("A valid password is required")
 _NAME_TOO_SHORT_MSG = _("Your legal name must be a minimum of two characters long")
 _PASSWORD_DOES_NOT_MATCH = _("Your password fields do not match")
 _PASSWORD_CONFIRM_INVALID_MSG = _("Please enter your password twice")
+_PHONE_INVALID_MESSAGE = _("Invalid phone number. Please enter your phone number in one of these formats +61299999999 or 0299999999")
 
 class AccountCreationForm(forms.Form):
     """
@@ -253,7 +254,15 @@ class AccountCreationForm(forms.Form):
         if email and email != email_confirm:
             raise ValidationError(_("E-mail fields don't match"))
         return email_confirm
-        
+ 
+#    def clean_password_confirm(self):
+#        password = self.cleaned_data["password"]
+#        password_confirm = self.cleaned_data["password_confirm"]
+#        if password and password != password_confirm:
+#            raise ValidationError(_("Password fields don't match"))
+#        return password_confirm
+
+       
     def clean_password(self):
         """Enforce password policies (if applicable)"""
         password = self.cleaned_data["password"]
@@ -287,13 +296,6 @@ class AccountCreationForm(forms.Form):
                 if not CourseEnrollmentAllowed.objects.filter(email=email).exists():
                     raise ValidationError(_("Unauthorized email address."))
         return email
-    def clean_password_confirm(self):
-        password = self.cleaned_data["password"]
-        password_confirm = self.cleaned_data["password_confirm"]
-        if password and password != password_confirm:
-            raise ValidationError(_("Password fields don't match"))
-        return password_confirm
-
     def clean_year_of_birth(self):
         """
         Parse year_of_birth to an integer, but just use None instead of raising
@@ -315,6 +317,20 @@ class AccountCreationForm(forms.Form):
             for key, value in self.cleaned_data.items()
             if key in self.extended_profile_fields and value is not None
         }
+    
+    #NEW: clean multiple fields
+    def clean(self):
+        """
+        Checks email repeat field and password repeat field
+        """
+        # Checks if e-mail fields match
+        
+        # Checks if password fields match
+        super(AccountCreationForm, self).clean()
+        password = self.cleaned_data.get("password")
+        password_confirm = self.cleaned_data.get("password_confirm")
+        if password and password != password_confirm:
+            self.add_error('password',ValidationError(_("password fields do match")))
 
 
 def get_registration_extension_form(*args, **kwargs):
@@ -331,14 +347,28 @@ def get_registration_extension_form(*args, **kwargs):
     module = import_module(module)
     return getattr(module, klass)(*args, **kwargs)
 
+# Student and Teacher Registration Form are used to 
+#     1. Validate Fields
+#     2. Responsible for addressing student/teacher specific required fields.
+#        These aren't handled for fields with reg_type in json Logistration form.
+
 class StudentRegistrationForm(forms.Form):
     # aboriginal or torres strait islander
     indigenous = forms.BooleanField(
         error_messages = {
             "invalid" : _("Invalid Boolean input")
-        }
+        },
+        label = _("I am of Aboriginal or Torres Strait Islander origin."),
+        required = False   #This will assume False by model definitions for unspecified.
     )
     
+    # school grade
+    SCHOOL_GRADES = StudentProfile.SCHOOL_GRADES
+    school_grade = forms.ChoiceField(
+        choices = SCHOOL_GRADES,
+        required = False
+    )
+
     # class code
     class_code = forms.CharField(
         max_length = 8,
@@ -347,31 +377,72 @@ class StudentRegistrationForm(forms.Form):
             "min_length" :  _("Your class code is 8 characters long"),
             "max_length" :  _("Your class code is 8 characters long"),
             "invalid" : _("Your class code contains only letters (A-Z) and numbers (0-9)"),
-        }
+            "required": _("A class code is required. Please check with your supervising teacher."),
+        },
+        label = _("Your class code"),
+        required = True
     )
     
     # validate classcode is 8 characters long with A_Z0-9
     def clean_class_code(self):
         class_code = self.cleaned_data["class_code"].upper()
-        return class_code
+        if not re.match('^[\dA-Z]{8}$',class_code):
+            raise ValidationError(_("Invalid format for class code."))
+        else:
+            return class_code
    
 
 class TeacherRegistrationForm(forms.Form):
-    
     # school name
-    school_name = forms.CharField(
+    school = forms.CharField(
         max_length = 100,
         required = True,
+        label= _("School Name"),
+        error_messages={
+            "required": _("School Required: Please search for your school")
+        }
     )
-
+    
+    school_id = forms.CharField(
+        max_length=10,
+        required = True,
+        label= _("School ID"),
+        validators = [RegexValidator(regex="^\d*$",message="School_id is given in an invalid format.")]
+    )
     # contact phone number
-    phone = AUPhoneNumberField()
+    phone = forms.CharField(
+        max_length = 16,
+        min_length = 10,    
+        label = _("Contact Phone Number"),
+        #instructions = _("Enter a valid Australian mobile or landline number"),
+        required = True,
+        #validators = [RegexValidator(regex="^\+?[0-9\)\(\- ]*$",message=_("Phone number uses invalid characters. Can only use digits, +, ,(,),-, or spaces"))]
+        error_messages={
+            "min_length" : _PHONE_INVALID_MESSAGE,
+            "max_length" :  _PHONE_INVALID_MESSAGE,
+            "invalid" : _PHONE_INVALID_MESSAGE,
+        },
+    )
 
     # how did you hear about us
     HEAR_FROM = TeacherProfile.HEAR_FROM
-    hear_about_us = forms.CharField()
+    hear_about_us = forms.ChoiceField(
+        choices = HEAR_FROM,
+        label = _("How did you hear about us?"),
+        required = False,
+    )
     ##validators
 
+    def clean_phone(self):
+        """
+        Clean phone number into valid phone number format
+        """
+        phone = self.cleaned_data.get("phone")
+        phone = re.sub('(\(|\)|-)', '', phone)
+        if not re.match("^(\+\d{9,12}|0\d{9})$",phone):
+            raise ValidationError(_("Invalid phone format."))
+        return phone
+    
 class SchoolRegistrationForm(forms.Form):
 
     # school address
@@ -386,17 +457,3 @@ class SchoolRegistrationForm(forms.Form):
 
     
 
-#class ExtraInfoForm(ModelForm):
-#    """
-#    The fields on this form are derived from the ExtraInfo model in models.py.
-#    """
-#    def __init__(self, *args, **kwargs):
-#        super(ExtraInfoForm, self).__init__(*args, **kwargs)
-#        self.fields['favorite_movie'].error_messages = {
-#            "required": u"Please tell us your favorite movie.",
-#            "invalid": u"We're pretty sure you made that movie up.",
-#        }
-#
-#    class Meta(object):
-#        model = ExtraInfo
-#        fields = ('favorite_editor', 'favorite_movie','indigenous')

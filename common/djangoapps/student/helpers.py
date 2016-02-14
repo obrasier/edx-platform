@@ -8,8 +8,8 @@ from django.core.urlresolvers import reverse, NoReverseMatch
 import third_party_auth
 from lms.djangoapps.verify_student.models import VerificationDeadline, SoftwareSecurePhotoVerification
 from course_modes.models import CourseMode
-
-
+from student.models import School, ClassSet
+from django.db.models import Q
 # Enumeration of per-course verification statuses
 # we display on the student dashboard.
 VERIFY_STATUS_NEED_TO_VERIFY = "verify_need_to_verify"
@@ -230,3 +230,52 @@ def get_next_url_for_login_page(request):
         # be saved in the session as part of the pipeline state. That URL will take priority
         # over this one.
     return redirect_to
+
+def check_classcode_exists(classcode):
+    """
+    Checks that the classcode exists. Takes a string input. Should be cleaned. no lowercase. 
+    """
+
+    if classcode is not None:
+        try:
+            ClassSet.objects.get(encrypted_pk=classcode)
+        except ClassSet.DoesNotExist:
+            return False
+        return True
+    else:
+        return False
+
+def check_school_exists(school_id,school_name):
+    """
+    Checks that the school exists and school_name and id match. Takes a string input. 
+
+    """
+
+    if school_id is not None and School.objects.filter(acara_id=school_id).exists():
+        if str(School.objects.get(acara_id=school_id))==school_name:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def search_school_details(query,max_results):
+    """
+    Given a search query, returns a list of school dictionaries matching the query by school name, suburb, state and postcode. 
+    Gives an empty list if the query exceeds more than "max_results" number of results.
+    """    
+    schoolValueQuerySet = School.objects.filter(Q(school_name__icontains=query)|Q(suburb__icontains=query)|Q(postcode__icontains=query)).values('acara_id','school_name','suburb','state','postcode')[:max_results]
+    resultCount = schoolValueQuerySet.count()
+    if resultCount == 0:
+        return []
+    else: 
+        schoolList= list(schoolValueQuerySet)
+        # concatenate the school details into one
+        for school in schoolList:
+            school["label"] = ", ".join([school["school_name"],school["suburb"],school["state"],school["postcode"]])
+            school["value"]=school.pop("school_name")
+            school["details"]=", ".join([school.pop("suburb"),school.pop("state"),school.pop("postcode")])
+        return schoolList
+
+                    

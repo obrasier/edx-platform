@@ -9,7 +9,8 @@ from opaque_keys.edx.keys import CourseKey
 from config_models.admin import ConfigurationModelAdmin
 from student.models import (
     UserProfile, UserTestGroup, CourseEnrollmentAllowed, DashboardConfiguration, CourseEnrollment, Registration,
-    PendingNameChange, CourseAccessRole, LinkedInAddToProfileConfiguration
+    PendingNameChange, CourseAccessRole, LinkedInAddToProfileConfiguration, StudentProfile, TeacherProfile, School, ClassSet,
+    ClassTime, Subject,
 )
 from student.roles import REGISTERED_ACCESS_ROLES
 
@@ -162,6 +163,33 @@ class UserProfileAdmin(admin.ModelAdmin):
     class Meta(object):
         model = UserProfile
 
+class StudentProfileAdmin(admin.ModelAdmin):
+    pass
+class TeacherProfileAdmin(admin.ModelAdmin):
+    pass
+class ClassSetAdmin(admin.ModelAdmin):
+    pass
+class SchoolAdmin(admin.ModelAdmin):
+    pass
+
+class ClassTimeAdmin(admin.ModelAdmin):
+    pass
+
+class SubjectAdmin(admin.ModelAdmin):
+    pass
+
+
+admin.site.register(StudentProfile, StudentProfileAdmin)
+
+admin.site.register(TeacherProfile, TeacherProfileAdmin)
+
+admin.site.register(ClassSet, ClassSetAdmin)
+
+admin.site.register(School, SchoolAdmin)
+
+admin.site.register(ClassTime, ClassTimeAdmin)
+
+admin.site.register(Subject, SubjectAdmin)
 
 admin.site.register(UserTestGroup)
 

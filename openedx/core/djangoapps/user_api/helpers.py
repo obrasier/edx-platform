@@ -117,7 +117,7 @@ class InvalidFieldError(Exception):
 class FormDescription(object):
     """Generate a JSON representation of a form. """
 
-    ALLOWED_TYPES = ["text", "email", "select", "textarea", "checkbox", "password"]
+    ALLOWED_TYPES = ["text", "email", "select", "radio", "textarea", "checkbox", "password", "hidden"]
 
     ALLOWED_RESTRICTIONS = {
         "text": ["min_length", "max_length"],
@@ -130,6 +130,7 @@ class FormDescription(object):
         forms.PasswordInput: "password",
         forms.ChoiceField: "select",
         forms.TypedChoiceField: "select",
+        forms.ChoiceField(widget=forms.RadioSelect): "radio",
         forms.Textarea: "textarea",
         forms.BooleanField: "checkbox",
         forms.EmailField: "email",
@@ -157,7 +158,7 @@ class FormDescription(object):
     def add_field(
             self, name, label=u"", field_type=u"text", default=u"",
             placeholder=u"", instructions=u"", required=True, restrictions=None,
-            options=None, include_default_option=False, error_messages=None,
+            options=None, include_default_option=False, error_messages=None, reg_type=None,
     ):
         """Add a field to the form description.
 
@@ -219,9 +220,13 @@ class FormDescription(object):
             "required": required,
             "restrictions": {},
             "errorMessages": {},
+            "reg_type": 0,
         }
 
-        if field_type == "select":
+        if reg_type is not None:
+            field_dict["reg_type"]=reg_type
+
+        if (field_type == "select")|(field_type=="radio"):
             if options is not None:
                 field_dict["options"] = []
 

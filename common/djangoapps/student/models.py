@@ -54,12 +54,12 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from util.model_utils import emit_field_changed_events, get_changed_fields_dict
 from util.query import use_read_replica_if_available
 from util.milestones_helpers import is_entrance_exams_enabled
-
 # NEW FEATURE: Australian Teacher and Classes Tier
 from localflavor.au.models import AUPhoneNumberField, AUStateField, AUPostCodeField
 import struct
 from Crypto.Cipher import DES
 from .utils import base36encode, base36decode
+from django.core.validators import RegexValidator
 
 UNENROLL_DONE = Signal(providing_args=["course_enrollment", "skip_refund"])
 log = logging.getLogger(__name__)
@@ -2109,15 +2109,37 @@ class StudentProfile(models.Model):
         primary_key=True,
     )
     
-    this_year = datetime.now(UTC).year
-    VALID_YEARS = range(this_year, this_year - 120, -1)
-    year_of_birth = models.IntegerField(blank=True, null=True, db_index=True)
-
+    SCHOOL_GRADES = (
+        ('K','K'),
+        ('1','Year 1'),
+        ('2','Year 2'),
+        ('3','Year 3'),
+        ('4','Year 4'),
+        ('5','Year 5'),
+        ('6','Year 6'),
+        ('7','Year 7'),
+        ('8','Year 8'),
+        ('9','Year 9'),
+        ('10','Year 10'),
+        ('11','Year 11'),
+        ('12','Year 12'),
+        ('T','Tertiary'),
+    )
+    school_grade = models.CharField(
+        max_length=2,
+        choices = SCHOOL_GRADES,
+        null = False,
+        blank = True,
+    )
+    
     #aboriginal or torres strait islander
     indigenous = models.BooleanField(
         default=False,
     )    
     classSet = models.ManyToManyField('ClassSet')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 class TeacherProfile(models.Model):
     """
@@ -2130,8 +2152,11 @@ class TeacherProfile(models.Model):
 
     school = models.ForeignKey('School',null=True)
     
-    phone = AUPhoneNumberField(
+    #use extensions for hyphens. Extensions should be inserted in a separate form field and concatenated after cleaning.
+    phone = models.CharField(
+        max_length=25,
         null = True,
+        #validators = [RegexValidator(regex="^(\+\d{9,12}|0\d{9})(\(\d{1,4}\))?$",message=_("Invalid number format. Either use international format (+61299999999) or local number with area code (0299999999). No spaces or hyphens."))]
     )
 
     HEAR_FROM = (
@@ -2151,6 +2176,9 @@ class TeacherProfile(models.Model):
         null = True,
         blank = True,
     )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
 class School(models.Model):
     """
@@ -2198,7 +2226,7 @@ class School(models.Model):
     )
 
     def __unicode__(self):              # __str__ on Python 3
-        display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state)]
+        display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state),unicode(self.postcode)]
         return ', '.join(display)
 
 
@@ -2214,7 +2242,7 @@ class EncryptedPKModelManager(models.Manager):
                 struct.pack('<Q', base36decode(encrypted_pk))
             ))[0]
 
-        return super(EncryptedPKManager, self).get(*args, **kwargs)
+        return super(EncryptedPKModelManager, self).get(*args, **kwargs)
 
 
 class EncryptedPKModel(models.Model):
@@ -2241,13 +2269,15 @@ class EncryptedPKModel(models.Model):
 
 
 # Responsible for returning encrypted pk
-class ClassCodeManager(EncryptedPKModelManager):
+class ClassSetManager(EncryptedPKModelManager):
     pass
 
-class ClassSet(models.Model):
+class ClassSet(EncryptedPKModel):
     """
     Class information for teachers.
     """
+    PK_SECRET_KEY = '53cR3tk3' #must be 8 characters exact
+    objects = ClassSetManager()             #encrypted pk for sharing
     created_by = models.ForeignKey(User,null=False,related_name='classes_created')
     teacher = models.ForeignKey(User,null=False, related_name='classes_taught')
     short_name =  models.CharField(max_length=12)         #for quick reference for teacher dashboard display
@@ -2259,8 +2289,6 @@ class ClassSet(models.Model):
     subject = models.ManyToManyField('Subject',null=False)
     assessment = models.BooleanField(default=False)     #for survey purposes
     
-    PK_SECRET_KEY = '53cR3tk3Y'
-    class_code_manager = ClassCodeManager()             #encrypted pk for sharing
     
     def __unicode__(self):              # __str__ on Python 3
         return self.short_name
@@ -2307,3 +2335,5 @@ class SchoolGrade(models.Model):
 class Subject(models.Model):
     description = models.CharField(max_length=12)
     default_list = models.BooleanField(default=False)
+
+

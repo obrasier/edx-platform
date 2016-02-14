@@ -1,3 +1,5 @@
+from django.db import models
+
 def base36encode(number):
     """Encode number to string of alphanumeric characters (0 to z). (Code taken from Wikipedia)."""
     if not isinstance(number, (int, long)):
@@ -17,3 +19,12 @@ def base36encode(number):
 def base36decode(numstr):
     """Convert a base-36 string (made of alphanumeric characters) to its numeric value."""
     return int(numstr,36)
+
+#def get_school_grades(default=True):
+#    gradeValueSet = SchoolGrade.objects.filter(default_list = default).values('short_name','description')
+#    gradelist = list(gradeValueSet)
+#    gradetuplelist = [(g['short_name'],g['description']) for g in gradeValueSet]
+#    grades = tuple(gradetuplelist)
+#    return grades
+#
+
