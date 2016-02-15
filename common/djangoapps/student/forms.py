@@ -330,7 +330,7 @@ class AccountCreationForm(forms.Form):
         password = self.cleaned_data.get("password")
         password_confirm = self.cleaned_data.get("password_confirm")
         if password and password != password_confirm:
-            self.add_error('password',ValidationError(_("password fields do match")))
+            self.add_error('password',ValidationError(_("Password fields don't match.")))
 
 
 def get_registration_extension_form(*args, **kwargs):
@@ -371,15 +371,15 @@ class StudentRegistrationForm(forms.Form):
 
     # class code
     class_code = forms.CharField(
-        max_length = 8,
-        min_length = 8,
+        #max_length = 8, length can be handled by the regex validator. To avoid brute forcing 8 character classcodes
+        #min_length = 8,
         error_messages={
-            "min_length" :  _("Your class code is 8 characters long"),
-            "max_length" :  _("Your class code is 8 characters long"),
+            #"min_length" :  _("Your class code should be 8 characters long"),
+            #"max_length" :  _("Your class code should be 8 characters long"),
             "invalid" : _("Your class code contains only letters (A-Z) and numbers (0-9)"),
             "required": _("A class code is required. Please check with your supervising teacher."),
         },
-        label = _("Your class code"),
+        label = _("Your Class Code"),
         required = True
     )
     
@@ -387,7 +387,7 @@ class StudentRegistrationForm(forms.Form):
     def clean_class_code(self):
         class_code = self.cleaned_data["class_code"].upper()
         if not re.match('^[\dA-Z]{8}$',class_code):
-            raise ValidationError(_("Invalid format for class code."))
+            raise ValidationError(_("Invalid format for class code. Please check your class code with your supervising teacher."))
         else:
             return class_code
    

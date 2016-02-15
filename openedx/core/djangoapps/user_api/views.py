@@ -958,7 +958,7 @@ class RegistrationView(APIView):
         label = _("")
         form_desc.add_field(
             "hear_about_us",
-            label = "How did you hear about us?",
+            label = "How did you hear about this year's challenge?",
             field_type = "select",
             required = required,
             error_messages={

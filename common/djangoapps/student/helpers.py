@@ -238,7 +238,7 @@ def check_classcode_exists(classcode):
 
     if classcode is not None:
         try:
-            ClassSet.objects.get(encrypted_pk=classcode)
+            ClassSet.objects.get(class_code=classcode)
         except ClassSet.DoesNotExist:
             return False
         return True

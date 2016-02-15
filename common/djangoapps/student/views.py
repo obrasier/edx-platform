@@ -49,7 +49,7 @@ from edxmako.shortcuts import render_to_response, render_to_string
 from course_modes.models import CourseMode
 from shoppingcart.api import order_history
 from student.models import (
-    Registration, UserProfile, StudentProfile, TeacherProfile, ClassSet,
+    Registration, UserProfile, StudentProfile, TeacherProfile, ClassSet, School,
     PendingEmailChange, CourseEnrollment, CourseEnrollmentAttribute, unique_id_for_user,
     CourseEnrollmentAllowed, UserStanding, LoginFailures,
     create_comments_service_user, PasswordHistory, UserSignupSource,
@@ -1490,11 +1490,13 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
         errors.update(custom_form.errors)
     if student_form:
         errors.update(student_form.errors)
+        if errors:
+            raise ValidationError(errors)
         if not check_classcode_exists(student_form.cleaned_data["class_code"]):
             try:
-                errors["classcode"].append("The Class Code you provided does not match with any of our classes. Check with your supervising teacher.")
+                errors["class_code"].append("The Class Code you provided does not match with any of our classes. Check with your supervising teacher.")
             except KeyError:
-                errors.update({"classcode":"The Class Code you provided does not match with any of our classes. Check with your supervising teacher."})
+                errors.update({"class_code":"The Class Code you provided does not match with any of our classes. Check with your supervising teacher."})
 
     elif teacher_form:
         errors.update(teacher_form.errors)
@@ -1502,7 +1504,7 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
     if errors:
         raise ValidationError(errors)
     
-    if not check_school_exists(teacher_form.cleaned_data["school_id"],teacher_form.cleaned_data["school"]):
+        if not check_school_exists(teacher_form.cleaned_data["school_id"],teacher_form.cleaned_data["school"]):
             try:
                 errors["school"].append("Check to make sure you've selected an existing school") # incase there are already field errors
             except KeyError:
@@ -1510,7 +1512,6 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
     if errors:
         raise ValidationError(errors)
 
-    raise ValueError(_("We created a teacher form without raising a validation error."))
 
     user = User(
         username=form.cleaned_data["username"],
@@ -1532,27 +1533,26 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
                 custom_model.user = user
                 custom_model.save()
             if student_form:
-                student_non_rel_fields=["indigenous","school_grade"]
-                student_classset = ClassSet.objects.get(encrypted_pk=student_form.cleaned_data["class_code"])
+                student_classset = ClassSet.objects.get(class_code=student_form.cleaned_data["class_code"])
                 student_profile = StudentProfile(
                     user = user,
-                    classSet = student_classset,
-                    **{key: form.cleaned_data.get(key) for key in student_non_rel_fields}
+                    school_grade = student_form.cleaned_data["school_grade"],
+                    indigenous = student_form.cleaned_data["indigenous"]
                 )
                 try:
                     student_profile.save()
                 except Exception:  
                     log.exception("StudentProfile creation failed for user {id}.".format(id=user.id))
                     raise
-
+                student_profile.classSet.add(student_classset)
 
             if teacher_form:
-                teacher_non_rel_fields = ["phone","hear_about_us"]
-                school = School.objects.get(acara_id = teacher_form.cleaned_data["acara_id"])
+                school = School.objects.get(acara_id = teacher_form.cleaned_data["school_id"])
                 teacher_profile = TeacherProfile(
                     user = user,
                     school = school,
-                    **{key: form.cleaned_data.get(key) for key in teacher_non_rel_fields}
+                    phone = teacher_form.cleaned_data["phone"],
+                    hear_about_us = teacher_form.cleaned_data["hear_about_us"]
                 )
                 try:
                     teacher_profile.save()

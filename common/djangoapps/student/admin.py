@@ -165,10 +165,13 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 class StudentProfileAdmin(admin.ModelAdmin):
     pass
+
 class TeacherProfileAdmin(admin.ModelAdmin):
     pass
+
 class ClassSetAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields=('class_code',)
+
 class SchoolAdmin(admin.ModelAdmin):
     pass
 
