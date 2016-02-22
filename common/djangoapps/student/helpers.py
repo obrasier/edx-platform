@@ -8,8 +8,10 @@ from django.core.urlresolvers import reverse, NoReverseMatch
 import third_party_auth
 from lms.djangoapps.verify_student.models import VerificationDeadline, SoftwareSecurePhotoVerification
 from course_modes.models import CourseMode
-from student.models import School, ClassSet
+from student.models import School, ClassSet, TeacherProfile, StudentProfile, UserProfile
 from django.db.models import Q
+from django.contrib.auth.models import User
+
 # Enumeration of per-course verification statuses
 # we display on the student dashboard.
 VERIFY_STATUS_NEED_TO_VERIFY = "verify_need_to_verify"
@@ -278,4 +280,28 @@ def search_school_details(query,max_results):
             school["details"]=", ".join([school.pop("suburb"),school.pop("state"),school.pop("postcode")])
         return schoolList
 
-                    
+def get_user_type(user):
+    try:
+        user.studentprofile
+        return 'student'
+    except StudentProfile.DoesNotExist:
+        try:
+            user.teacherprofile
+            return 'teacher'
+        except TeacherProfile.DoesNotExist:
+            return 'undefined'
+
+def is_teacher(user):
+    try:
+        user.teacherprofile
+        return True
+    except TeacherProfile.DoesNotExist:
+        return False
+
+def is_student(user):
+    try:
+        user.studentprofile
+        return True
+    except StudentProfile.DoesNotExist:
+        return False
+
