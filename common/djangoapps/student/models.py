@@ -55,7 +55,6 @@ from util.model_utils import emit_field_changed_events, get_changed_fields_dict
 from util.query import use_read_replica_if_available
 from util.milestones_helpers import is_entrance_exams_enabled
 # NEW FEATURE: Australian Teacher and Classes Tier
-from localflavor.au.models import AUPhoneNumberField, AUStateField, AUPostCodeField
 import struct
 from Crypto.Cipher import DES
 from .utils import base36encode, base36decode
@@ -2206,9 +2205,13 @@ class School(models.Model):
         max_length = 100,
     )
     
-    state = AUStateField()
+    state = models.CharField(
+        max_length = 10,
+    )
 
-    postcode = AUPostCodeField()
+    postcode = models.CharField(
+        max_length = 10,
+    )
     
     SCHOOL_SECTORS=(
         ('G','Government'),

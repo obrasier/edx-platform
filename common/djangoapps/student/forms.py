@@ -25,8 +25,6 @@ from util.password_policy_validators import (
     validate_password_dictionary,
 )
 from student.models import StudentProfile, TeacherProfile, School, ClassSet
-from localflavor.au.forms import AUStateSelect, AUPhoneNumberField, AUPostCodeField
-from localflavor.au import au_states
 from django.core.validators import RegexValidator
 
 class PasswordResetFormNoActive(PasswordResetForm):
@@ -451,8 +449,12 @@ class SchoolRegistrationForm(forms.Form):
     suburb = forms.CharField(
         max_length = 30,
     )
-    state = AUStateSelect()
-    postcode = AUPostCodeField()
+    state = forms.CharField(
+        max_length = 3,    
+    )
+    postcode = forms.CharField(
+        max_length = 6,
+    )
 
     
 class ClassSetForm(ModelForm):
