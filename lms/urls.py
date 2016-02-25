@@ -505,7 +505,15 @@ urlpatterns += (
         'instructor.views.instructor_dashboard.instructor_dashboard_2',
         name='instructor_dashboard',
     ),
-
+    
+    # For the teacher
+    url(
+        r'^courses/{}/teacher$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        'instructor.views.instructor_dashboard.teacher_dashboard',
+        name='teacher_dashboard'
+    ),
 
     url(
         r'^courses/{}/set_course_mode_price$'.format(

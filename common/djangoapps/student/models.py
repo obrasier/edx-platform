@@ -2403,7 +2403,8 @@ class RandomPrimaryIdModel(models.Model):
         abstract = True
 
 
-
+#note: Do not create a ClassSet with the shell, because if you delete the classcode, saving the model
+# will generate a new classcode.
 
 class ClassSet(RandomPrimaryIdModel):
     """

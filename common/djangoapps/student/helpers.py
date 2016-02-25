@@ -298,6 +298,27 @@ def is_teacher(user):
     except TeacherProfile.DoesNotExist:
         return False
 
+def is_teacher_of(student,user,course_key=None):
+    """
+    Returns boolean to whether user is a teacher of student. This does not check for CourseTeacherRole - 
+    This assumes it is being handled by a higher level wrapper. If a course_id (CourseKeyField) is specified,
+    then it'll only look for teacher within a specific ClassSet with a specific CourseKey. If there is no matching
+    CourseKey then it returns false.
+    """
+    try:
+        sp = student.studentprofile
+    except StudentProfile.DoesNotExist:
+        return False
+    
+    if course_id:
+        student_classes =  sp.classSet.filter(course_id=course_key)
+    else:
+        student_classes = sp.classSet.all()
+    for c in student_classes:
+        if c.teacher == user:
+            return True
+    return False
+
 def is_student(user):
     try:
         user.studentprofile

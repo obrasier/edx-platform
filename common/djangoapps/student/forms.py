@@ -5,7 +5,7 @@ from importlib import import_module
 import re
 
 from django import forms
-from django.forms import widgets
+from django.forms import widgets, ModelForm
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordResetForm
@@ -24,11 +24,10 @@ from util.password_policy_validators import (
     validate_password_complexity,
     validate_password_dictionary,
 )
-from student.models import StudentProfile, TeacherProfile, School
+from student.models import StudentProfile, TeacherProfile, School, ClassSet
 from localflavor.au.forms import AUStateSelect, AUPhoneNumberField, AUPostCodeField
 from localflavor.au import au_states
 from django.core.validators import RegexValidator
-
 
 class PasswordResetFormNoActive(PasswordResetForm):
     error_messages = {
@@ -456,4 +455,7 @@ class SchoolRegistrationForm(forms.Form):
     postcode = AUPostCodeField()
 
     
-
+class ClassSetForm(ModelForm):
+    class Meta:
+        model = ClassSet
+        fields = ['short_name','class_name','assessment','grade']

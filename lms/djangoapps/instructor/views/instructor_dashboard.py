@@ -52,8 +52,28 @@ from class_dashboard.dashboard_data import get_section_display_name, get_array_s
 from .tools import get_units_with_due_date, title_or_url, bulk_email_is_enabled_for_course
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
+from student.forms import ClassSetForm
+
 log = logging.getLogger(__name__)
 
+#NEW: TeacherDashboardTab
+class TeacherDashboardTab(CourseTab):
+    """
+    Defines the Teacher Dashboard view type that is shown as a course tab.
+    """
+
+    type = "teacher"
+    title = ugettext_noop('Teacher Dashboard')
+    view_name = "teacher_dashboard"
+    is_dynamic = True    # The "Teacher Dashboard" tab is instead dynamically added when it is enabled
+
+    @classmethod
+    def is_enabled(cls, course, user=None):
+        """
+        Returns true if the specified user has staff access.
+        """
+        return bool(user and has_access(user, 'teacher', course.id))
+        return True
 
 class InstructorDashboardTab(CourseTab):
     """
@@ -72,7 +92,88 @@ class InstructorDashboardTab(CourseTab):
         """
         return bool(user and has_access(user, 'staff', course, course.id))
 
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+def teacher_dashboard(request, course_id):
+    """ Display the teacherr dashboard for a course. """
+    try:
+        course_key = CourseKey.from_string(course_id)
+    except InvalidKeyError:
+        log.error(u"Unable to find course with course key %s while loading the Teacher Dashboard.", course_id)
+        return HttpResponseServerError()
 
+    course = get_course_by_id(course_key, depth=0)
+
+    access = {
+        'admin': request.user.is_staff,
+        'instructor': bool(has_access(request.user, 'instructor', course)),
+        'finance_admin': CourseFinanceAdminRole(course_key).has_user(request.user),
+        'sales_admin': CourseSalesAdminRole(course_key).has_user(request.user),
+        'staff': bool(has_access(request.user, 'staff', course)),
+        'forum_admin': has_forum_access(request.user, course_key, FORUM_ROLE_ADMINISTRATOR),
+        'teacher' : bool(has_access(request.user,'teacher', course_key)),
+    }
+
+    if not access['teacher']:
+        raise Http404()
+
+    is_white_label = CourseMode.is_white_label(course_key)
+
+    sections = [
+        _section_course_info(course, access),
+        _section_my_classes(course,access),
+    ]
+
+
+    context = {
+        'course': course,
+        'sections': sections,
+    }
+
+    return render_to_response('instructor/teacher_dashboard/teacher_dashboard.html', context)
+
+def _section_my_classes(course, access):
+    """ Provide data for the corresponding dashboard section """
+    course_key = course.id
+
+    section_data = {
+        'section_key': 'my_classes',
+        'section_display_name': _('My Classes'),
+        'access': access,
+        'course_id': course_key,
+        'num_sections': len(course.children),
+        'class_set_form' : ClassSetForm(),
+    }
+
+    if settings.FEATURES.get('DISPLAY_ANALYTICS_ENROLLMENTS'):
+        section_data['enrollment_count'] = CourseEnrollment.objects.enrollment_counts(course_key)
+
+    if settings.ANALYTICS_DASHBOARD_URL:
+        dashboard_link = _get_dashboard_link(course_key)
+        message = _("Enrollment data is now available in {dashboard_link}.").format(dashboard_link=dashboard_link)
+        section_data['enrollment_message'] = message
+
+    if settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD'):
+        section_data['detailed_gitlogs_url'] = reverse('gitlogs_detail', kwargs={'course_id': unicode(course_key)})
+
+    try:
+        sorted_cutoffs = sorted(course.grade_cutoffs.items(), key=lambda i: i[1], reverse=True)
+        advance = lambda memo, (letter, score): "{}: {}, ".format(letter, score) + memo
+        section_data['grade_cutoffs'] = reduce(advance, sorted_cutoffs, "")[:-2]
+    except Exception:  # pylint: disable=broad-except
+        section_data['grade_cutoffs'] = "Not Available"
+    # section_data['offline_grades'] = offline_grades_available(course_key)
+
+    try:
+        section_data['course_errors'] = [(escape(a), '') for (a, _unused) in modulestore().get_course_errors(course.id)]
+    except Exception:  # pylint: disable=broad-except
+        section_data['course_errors'] = [('Error fetching errors', '')]
+
+    return section_data
+
+
+  
+ 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 def instructor_dashboard_2(request, course_id):

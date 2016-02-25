@@ -421,7 +421,7 @@ class RegistrationView(APIView):
             required=required
         )
 
-
+    # Deprecated by MadMaker
     def _add_name_field(self, form_desc, required=True):
         """Add a name field to a form description.
 

@@ -42,6 +42,7 @@ from student.roles import (
     CourseCcxCoachRole,
     CourseInstructorRole,
     CourseStaffRole,
+    CourseTeacherRole,
     GlobalStaff,
     SupportStaffRole,
     OrgInstructorRole,
@@ -568,6 +569,7 @@ def _has_access_course_key(user, action, course_key):
     checkers = {
         'staff': lambda: _has_staff_access_to_location(user, None, course_key),
         'instructor': lambda: _has_instructor_access_to_location(user, None, course_key),
+        'teacher': lambda: _has_teacher_access_to_location(user, None, course_key),
     }
 
     return _dispatch(checkers, action, user, course_key)
@@ -678,6 +680,11 @@ def _has_staff_access_to_location(user, location, course_key=None):
         course_key = location.course_key
     return _has_access_to_course(user, 'staff', course_key)
 
+def _has_teacher_access_to_location(user, location, course_key=None):
+    if course_key is None:
+        course_key = location.course_key
+    return _has_access_to_course(user, 'teacher', course_key)
+
 
 def _has_access_to_course(user, access_level, course_key):
     """
@@ -686,7 +693,7 @@ def _has_access_to_course(user, access_level, course_key):
     This ensures the user is authenticated and checks if global staff or has
     staff / instructor access.
 
-    access_level = string, either "staff" or "instructor"
+    access_level = string, either "staff" or "instructor" or "teacher"
     """
     if user is None or (not user.is_authenticated()):
         debug("Deny: no user or anon user")
@@ -699,11 +706,19 @@ def _has_access_to_course(user, access_level, course_key):
         debug("Allow: user.is_staff")
         return ACCESS_GRANTED
 
-    if access_level not in ('staff', 'instructor'):
+    if access_level not in ('staff', 'instructor','teacher'):
         log.debug("Error in access._has_access_to_course access_level=%s unknown", access_level)
         debug("Deny: unknown access level")
         return ACCESS_DENIED
-
+    
+    teacher_access = (
+        CourseTeacherRole(course_key).has_user(user)
+    )    
+    
+    if teacher_access and access_level == 'teacher':
+        debug("Allow: user has course teacher access")
+        return ACCESS_GRANTED
+    
     staff_access = (
         CourseStaffRole(course_key).has_user(user) or
         OrgStaffRole(course_key.org).has_user(user)
