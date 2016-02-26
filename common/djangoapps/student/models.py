@@ -2240,6 +2240,69 @@ class School(models.Model):
         display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state),unicode(self.postcode)]
         return ', '.join(display)
 
+class SchoolProfile(models.Model):
+
+	school = models.ForeignKey('School', on_delete=models.CASCADE)
+
+	smcl_id = models.IntegerField(unique=True)
+
+	year_of_data = models.IntegerField()
+
+	LOCATIONS = (
+		('M', 'Metropolitan'),
+		('P', 'Provincial'),
+		('R', 'Remote'),
+		('V', 'Very Remote'),
+	)
+
+	location = models.CharField(
+		max_length = 1,
+		choices = LOCATIONS,
+	)
+
+	icsea = models.IntegerField(null=True)
+	teaching_staff = models.IntegerField(null=True)
+	total_enrollments = models.IntegerField(default=0)
+	female_enrollments = models.IntegerField(default=0)
+	male_enrollments = models.IntegerField(default=0)
+	ind_enrollments_pct = models.IntegerField(default=0)
+	lang_other_than_eng = models.IntegerField(default=0)
+	latitude = models.FloatField(null=True)
+	longitude = models.FloatField(null=True)
+	area = models.ForeignKey('RegionOne', null=True)
+
+	def __unicode__(self):
+		return self.school.__unicode__()
+    
+	def save(self, *args, **kwargs):
+		sp = SchoolProfile.objects.filter(year_of_data=self.year_of_data).filter(school=self.school)
+		if sp:
+			raise AttributeError('{school} already exists, with profile year {year}, primary_key is {pk}'.format(school=self.school,year=self.year_of_data, pk=sp.values('pk')))
+		else:
+			super(SchoolProfile, self).save(*args, **kwargs)
+
+
+class SchoolRegion(models.Model):
+	region_id = models.IntegerField(unique=False)
+
+	region_type = models.IntegerField(null=True)
+
+	region_name = models.CharField(
+		max_length = 125,
+	)
+	def __unicode__(self):
+		return unicode(self.region_name)
+
+class RegionOne(SchoolRegion):
+	region_two = models.ForeignKey('RegionTwo', null=False)
+	region_type = 1 
+
+class RegionTwo(SchoolRegion):
+	region_three = models.ForeignKey('RegionThree', null=False)
+	region_type = 2 
+
+class RegionThree(SchoolRegion):
+	region_type = 3 
 
 class EncryptedPKModelManager(models.Manager):
     """This manager allows models to be identified based on their encrypted_pk value."""
