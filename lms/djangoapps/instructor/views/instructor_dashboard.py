@@ -53,6 +53,8 @@ from .tools import get_units_with_due_date, title_or_url, bulk_email_is_enabled_
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
 from student.forms import ClassSetForm
+from django.forms.models import model_to_dict
+from student.helpers import is_teacher, get_my_classes, get_class_size
 
 log = logging.getLogger(__name__)
 
@@ -95,7 +97,7 @@ class InstructorDashboardTab(CourseTab):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 def teacher_dashboard(request, course_id):
-    """ Display the teacherr dashboard for a course. """
+    """ Display the teacher dashboard for a course. """
     try:
         course_key = CourseKey.from_string(course_id)
     except InvalidKeyError:
@@ -115,16 +117,36 @@ def teacher_dashboard(request, course_id):
     }
 
     if not access['teacher']:
-        raise Http404()
+        raise Http404("You do not have access to this page")
+
+    # This should never need to be raised, since assigning teacher access should always check for this first.
+    #if not is_teacher(request.user):
+    #    raise Http404("You have the wrong user type to access this page. Please contact the site administrator.")
 
     is_white_label = CourseMode.is_white_label(course_key)
+    
+    class_form_dict = {}
 
+    if request.method == 'POST':
+        class_set_form = ClassSetForm(request.POST.copy())
+        if class_set_form.is_valid():
+            _new_class(class_set_form, course_key, request.user)
+            class_form_dict.update( {'success': 'Class successfully added!'})
+            class_set_form = ClassSetForm() # refresh to blank form
+        else:
+            pass                            # errors will be updated
+    else:
+        class_set_form = ClassSetForm()
+    
+
+    new_class_dict = _section_my_classes(course,access,request.user)
+    new_class_dict.update({'class_set_form': class_set_form})
+    
     sections = [
         _section_course_info(course, access),
-        _section_my_classes(course,access),
+        new_class_dict
     ]
-
-
+    
     context = {
         'course': course,
         'sections': sections,
@@ -132,7 +154,11 @@ def teacher_dashboard(request, course_id):
 
     return render_to_response('instructor/teacher_dashboard/teacher_dashboard.html', context)
 
-def _section_my_classes(course, access):
+    
+def _create_new_class(form, course_key, user):
+    pass
+
+def _section_my_classes(course, access, user):
     """ Provide data for the corresponding dashboard section """
     course_key = course.id
 
@@ -142,38 +168,24 @@ def _section_my_classes(course, access):
         'access': access,
         'course_id': course_key,
         'num_sections': len(course.children),
-        'class_set_form' : ClassSetForm(),
+        'class_set_form': ClassSetForm(),
     }
-
-    if settings.FEATURES.get('DISPLAY_ANALYTICS_ENROLLMENTS'):
-        section_data['enrollment_count'] = CourseEnrollment.objects.enrollment_counts(course_key)
-
-    if settings.ANALYTICS_DASHBOARD_URL:
-        dashboard_link = _get_dashboard_link(course_key)
-        message = _("Enrollment data is now available in {dashboard_link}.").format(dashboard_link=dashboard_link)
-        section_data['enrollment_message'] = message
-
-    if settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD'):
-        section_data['detailed_gitlogs_url'] = reverse('gitlogs_detail', kwargs={'course_id': unicode(course_key)})
-
-    try:
-        sorted_cutoffs = sorted(course.grade_cutoffs.items(), key=lambda i: i[1], reverse=True)
-        advance = lambda memo, (letter, score): "{}: {}, ".format(letter, score) + memo
-        section_data['grade_cutoffs'] = reduce(advance, sorted_cutoffs, "")[:-2]
-    except Exception:  # pylint: disable=broad-except
-        section_data['grade_cutoffs'] = "Not Available"
-    # section_data['offline_grades'] = offline_grades_available(course_key)
-
-    try:
-        section_data['course_errors'] = [(escape(a), '') for (a, _unused) in modulestore().get_course_errors(course.id)]
-    except Exception:  # pylint: disable=broad-except
-        section_data['course_errors'] = [('Error fetching errors', '')]
+    
+    # get classes (a list of dictionaries)
+    classes = get_my_classes(user,course_key)
+    classes_info = []
+    for c in classes:
+        cdict = {}
+        cdict['total_accounts']=get_class_size(c)
+        cdict['active_accounts']=get_class_size(c,True)
+        cdict.update(model_to_dict(c,fields=['short_name','class_name','class_code','grade','subject','no_of_students' ,'assessment']))
+        cdict['school_name'] = c.school.__unicode__()
+        classes_info.append(cdict)
+    
+    section_data['my_classes'] = classes_info
 
     return section_data
 
-
-  
- 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 def instructor_dashboard_2(request, course_id):

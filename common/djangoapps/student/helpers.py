@@ -326,3 +326,23 @@ def is_student(user):
     except StudentProfile.DoesNotExist:
         return False
 
+def get_class_size(class_set,is_active=None):
+    """
+    Retrieves number of studentprofiles matched for the class_set. 
+    If active=None, counts students irrespective of whether they are active
+    or not. Otherwise, counts all (in)active students in the class for active= (false)true.
+    """
+    if is_active == None:
+        return class_set.studentprofile_set.count()
+    else:
+        return class_set.studentprofile_set.filter(user__is_active=is_active).count()
+
+# assumes already checked for teacher profile
+def get_my_classes(user, course_id=None):
+    """
+    Returns a QuerySet
+    """
+    if course_id:
+        return user.classes_taught.filter(course_id=course_id)
+    else:
+        return user.classes_taught.all()

@@ -2146,6 +2146,7 @@ class StudentProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+        
  
 
 class TeacherProfile(models.Model):
@@ -2422,15 +2423,25 @@ class ClassSet(RandomPrimaryIdModel):
     school = models.ForeignKey('School',null=False)
     
     course_id = CourseKeyField(db_index=True, max_length=255, blank=True) 
-    grade = models.ManyToManyField('SchoolGrade', blank=True)
+    grade = models.CharField(max_length=12,null=True)
     subject = models.ManyToManyField('Subject',blank=True)
     assessment = models.BooleanField(default=False)     #for survey purposes
-    
+    no_of_students = models.IntegerField(null=True)
     
     def __unicode__(self):              # __str__ on Python 3
         return self.short_name
 
+    def size(self, is_active=None):
+        if is_active == None:
+            return self.studentprofile_set.count()
+        else:
+            return self.studentprofile_set.filter(user__is_active=is_active).count()
+
+    
     def save(self, *args, **kwargs):
+        # verify that teacher's expected class size >= number of active enrolments
+        if self.no_of_students < self.size(True):
+            self.no_of_students = self.size(True)
         try:
             self.school
         except School.DoesNotExist: 
@@ -2470,17 +2481,20 @@ class ClassTime(models.Model):
     comments = models.CharField(max_length=100,blank=True,null=True)                       #incase of week A week B
 
 
-class SchoolGrade(models.Model):
-    """
-    School grade level. Would have made some more strict choices, 
-    but would like to see what "other" options get created. "default_list"
-    determines whether the school grades should be listed in the form.
-    """
-    description = models.CharField(max_length=12,null=False)
-    default_list = models.BooleanField(default=False)
+#class SchoolGrade(models.Model):
+#    """
+#    School grade level. Would have made some more strict choices, 
+#    but would like to see what "other" options get created. "default_list"
+#    determines whether the school grades should be listed in the form.
+#    """
+#    description = models.CharField(max_length=12,null=False)
+#    default_list = models.BooleanField(default=False)
+    
 
 class Subject(models.Model):
-    description = models.CharField(max_length=12)
+    description = models.CharField(max_length=30)
     default_list = models.BooleanField(default=False)
-
+    
+    def __unicode__(self):
+        return self.description
 

@@ -17,8 +17,8 @@ from student.roles import (
     CourseInstructorRole,
     CourseCcxCoachRole,
     CourseStaffRole,
+    CourseTeacherRole,
 )
-
 from instructor.enrollment import (
     enroll_email,
     get_email_params,
@@ -31,6 +31,7 @@ ROLES = {
     'instructor': CourseInstructorRole,
     'staff': CourseStaffRole,
     'ccx_coach': CourseCcxCoachRole,
+    'teacher': CourseTeacherRole
 }
 
 

@@ -24,8 +24,9 @@ from util.password_policy_validators import (
     validate_password_complexity,
     validate_password_dictionary,
 )
-from student.models import StudentProfile, TeacherProfile, School, ClassSet
+from student.models import StudentProfile, TeacherProfile, School, ClassSet, Subject 
 from django.core.validators import RegexValidator
+from student.helpers import is_teacher
 
 class PasswordResetFormNoActive(PasswordResetForm):
     error_messages = {
@@ -456,8 +457,73 @@ class SchoolRegistrationForm(forms.Form):
         max_length = 6,
     )
 
+class TextSelectMultiple(widgets.SelectMultiple):
+    """
+    Set checked values based on a comma separated list instead of a python list
+    """
+    def render(self, name, value, **kwargs):
+        if isinstance(value, basestring):
+            value = value.split(",")
+        return super(TextSelectMultiple, self).render(name, value, **kwargs)
+
+class TextMultiField(forms.MultipleChoiceField):
+    """
+    Work in conjunction with TextCheckboxSelectMultiple to store a
+    comma separated list of multiple choice values in a CharField/TextField
+    """
+    widget = TextSelectMultiple
+    def clean(self, value):
+        val = super(TextMultiField, self).clean(value)
+        return ",".join(val)
     
 class ClassSetForm(ModelForm):
+    assessment = forms.TypedChoiceField(
+               coerce=lambda x: x == 'True',
+               choices=((True, 'Yes'), (False, 'No')),
+               widget=forms.RadioSelect
+            )
+    grade = TextMultiField(choices = StudentProfile.SCHOOL_GRADES)
+    no_of_students = forms.IntegerField(required=True, min_value=0)
     class Meta:
         model = ClassSet
-        fields = ['short_name','class_name','assessment','grade']
+        
+        fields = ['short_name','class_name','assessment','subject','grade','no_of_students']
+        labels = {
+            'short_name': _('Short Name'),
+            'class_name':_('Class Team Name'),
+            'assessment':_('Assessment'),
+            'no_of_students': _('Number of students in class'),
+        }
+        help_texts = {
+            'short_name': _('A quick personal reference name.'),
+            'class_name':_('A team name for your class. This will be displayed your student\'s profiles'),
+            'assessment':_('Will you be using the course grades as part of your teaching rubric?'),
+            'grade': _('Hold down Ctrl or cmd to select multiple grades'),
+            'no_of_students': _('The size of your class (not necessarily how many students have signed up with accounts).'),
+        }
+        error_messages = {
+            'short_name': {
+                'max_length': _("This name is too long."),
+            },
+            'class_name': {
+                'max_length': _("This name is too long."),
+            },
+            'no_of_students': {
+                'required': _("Enter the number of students in your class. If you are uncertain, you can estimate and change this field later."),
+            },
+        }
+        widgets = {
+            'short_name': forms.TextInput(attrs = {'placeholder': 'e.g. Yr09LineB'}),
+            'class_name': forms.TextInput(attrs = {'placeholder': 'e.g. The Mighty Ducks'}),
+            'subject': forms.Select(),
+        }
+
+class OtherSubjectForm(ModelForm):
+    class Meta:
+        model = Subject
+        fields = ['description']
+        help_texts = {'description': _('Please specify.')}
+        def save(self, *args, **kwargs):
+            instance = super(OtherSubjectForm, self).save(commit=False)
+            default_list = False
+            instance.save()

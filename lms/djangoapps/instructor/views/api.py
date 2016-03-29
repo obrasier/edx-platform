@@ -110,6 +110,7 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
+from student.helpers import is_teacher
 
 log = logging.getLogger(__name__)
 
@@ -908,6 +909,16 @@ def modify_access(request, course_id):
             'removingSelfAsInstructor': True,
         }
         return JsonResponse(response_payload)
+    
+    # catch when no teacher profile exists for user requesting teacher access
+    if rolename == 'teacher' and not is_teacher(user):
+        response_payload = {
+            'unique_student_identifier': user.username,
+            'rolename': rolename,
+            'action': action,
+            'noTeacherProfile': True,
+        }
+        return JsonResponse(response_payload)
 
     if action == 'allow':
         allow_access(course, user, rolename)
@@ -930,7 +941,7 @@ def modify_access(request, course_id):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('instructor')
-@require_query_params(rolename="'instructor', 'staff', or 'beta'")
+@require_query_params(rolename="'instructor', 'teacher', 'staff', or 'beta'")
 def list_course_role_members(request, course_id):
     """
     List instructors and staff.
