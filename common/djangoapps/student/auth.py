@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.conf import settings
 from opaque_keys.edx.locator import LibraryLocator
 
-from student.roles import GlobalStaff, CourseCreatorRole, CourseStaffRole, CourseInstructorRole, CourseRole, \
+from student.roles import GlobalStaff, CourseCreatorRole, CourseTeacherRole, CourseStaffRole, CourseInstructorRole, CourseRole, \
     CourseBetaTesterRole, OrgInstructorRole, OrgStaffRole, LibraryUserRole, OrgLibraryUserRole
 
 

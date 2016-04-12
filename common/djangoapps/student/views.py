@@ -48,13 +48,13 @@ from edxmako.shortcuts import render_to_response, render_to_string
 from course_modes.models import CourseMode
 from shoppingcart.api import order_history
 from student.models import (
-    Registration, UserProfile,
+    Registration, UserProfile, StudentProfile, TeacherProfile, ClassSet, School,
     PendingEmailChange, CourseEnrollment, CourseEnrollmentAttribute, unique_id_for_user,
     CourseEnrollmentAllowed, UserStanding, LoginFailures,
     create_comments_service_user, PasswordHistory, UserSignupSource,
     DashboardConfiguration, LinkedInAddToProfileConfiguration, ManualEnrollmentAudit, ALLOWEDTOENROLL_TO_ENROLLED)
-from student.forms import AccountCreationForm, PasswordResetFormNoActive, get_registration_extension_form
 from lms.djangoapps.commerce.utils import EcommerceService  # pylint: disable=import-error
+from student.forms import AccountCreationForm, PasswordResetFormNoActive, get_registration_extension_form, StudentRegistrationForm, TeacherRegistrationForm
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification  # pylint: disable=import-error
 from certificates.models import CertificateStatuses, certificate_status_for_student
 from certificates.api import (  # pylint: disable=import-error
@@ -109,6 +109,9 @@ from student.helpers import (
     check_verify_status_by_course,
     auth_pipeline_urls, get_next_url_for_login_page,
     DISABLE_UNENROLL_CERT_STATES,
+    check_classcode_exists,
+    search_school_details,
+    check_school_exists,
 )
 from student.cookies import set_logged_in_cookies, delete_logged_in_cookies
 from student.models import anonymous_id_for_user
@@ -127,7 +130,6 @@ from openedx.core.djangoapps.credentials.utils import get_user_program_credentia
 from openedx.core.djangoapps.credit.email_utils import get_credit_provider_display_names, make_providers_strings
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api
 from openedx.core.djangoapps.programs.utils import get_programs_for_dashboard
-
 
 log = logging.getLogger("edx.student")
 AUDIT_LOG = logging.getLogger("audit")
@@ -587,12 +589,10 @@ def dashboard(request):
 
     course_optouts = Optout.objects.filter(user=user).values_list('course_id', flat=True)
 
-    message = ""
     if not user.is_active:
-        message = render_to_string(
-            'registration/activate_account_notice.html',
-            {'email': user.email, 'platform_name': platform_name}
-        )
+        response = redirect("signin_user") 
+        return response
+        
 
     # Global staff can see what courses errored on their dashboard
     staff_access = False
@@ -714,7 +714,7 @@ def dashboard(request):
         'redirect_message': redirect_message,
         'course_enrollments': course_enrollments,
         'course_optouts': course_optouts,
-        'message': message,
+        #'message': message,
         'staff_access': staff_access,
         'errored_courses': errored_courses,
         'show_courseware_links_for': show_courseware_links_for,
@@ -1487,8 +1487,22 @@ def user_signup_handler(sender, **kwargs):  # pylint: disable=unused-argument
             user_signup_source.save()
             log.info(u'user {} originated from a white labeled "Microsite"'.format(kwargs['instance'].id))
 
+#NEW: School Lookup
+def lookup_school(request):
+    max_results = 20
+    min_char = 3
+    if request.method=="GET":
+        q = request.GET['term']
+        if q is not None and len(q)>=min_char:
+            data = json.dumps(search_school_details(q,max_results))
+        else:
+            data = 'fail'
+    else:
+        data = 'fail'
+    return HttpResponse(data, content_type="application/json")
+ 
 
-def _do_create_account(form, custom_form=None):
+def _do_create_account(form, custom_form=None,student_form=None,teacher_form=None):
     """
     Given cleaned post variables, create the User and UserProfile objects, as well as the
     registration for this user.
@@ -1501,13 +1515,36 @@ def _do_create_account(form, custom_form=None):
     errors.update(form.errors)
     if custom_form:
         errors.update(custom_form.errors)
+    if student_form:
+        errors.update(student_form.errors)
+        if errors:
+            raise ValidationError(errors)
+        if not check_classcode_exists(student_form.cleaned_data["class_code"]):
+            try:
+                errors["class_code"].append("The Class Code you provided does not match with any of our classes. Check with your supervising teacher.")
+            except KeyError:
+                errors.update({"class_code":"The Class Code you provided does not match with any of our classes. Check with your supervising teacher."})
 
+    elif teacher_form:
+        errors.update(teacher_form.errors)
+         
     if errors:
         raise ValidationError(errors)
+    
+        if not check_school_exists(teacher_form.cleaned_data["school_id"],teacher_form.cleaned_data["school"]):
+            try:
+                errors["school"].append("Check to make sure you've selected an existing school") # incase there are already field errors
+            except KeyError:
+                errors.update({"school":"Check to make sure you've selected an existing school"}) 
+    if errors:
+        raise ValidationError(errors)
+
 
     user = User(
         username=form.cleaned_data["username"],
         email=form.cleaned_data["email"],
+        first_name=form.cleaned_data["first_name"],
+        last_name=form.cleaned_data["last_name"],
         is_active=False
     )
     user.set_password(form.cleaned_data["password"])
@@ -1522,6 +1559,35 @@ def _do_create_account(form, custom_form=None):
                 custom_model = custom_form.save(commit=False)
                 custom_model.user = user
                 custom_model.save()
+            if student_form:
+                student_classset = ClassSet.objects.get(class_code=student_form.cleaned_data["class_code"])
+                student_profile = StudentProfile(
+                    user = user,
+                    school_grade = student_form.cleaned_data["school_grade"],
+                    indigenous = student_form.cleaned_data["indigenous"]
+                )
+                try:
+                    student_profile.save()
+                except Exception:  
+                    log.exception("StudentProfile creation failed for user {id}.".format(id=user.id))
+                    raise
+                student_profile.classSet.add(student_classset)
+
+            if teacher_form:
+                school = School.objects.get(acara_id = teacher_form.cleaned_data["school_id"])
+                teacher_profile = TeacherProfile(
+                    user = user,
+                    school = school,
+                    phone = teacher_form.cleaned_data["phone"],
+                    hear_about_us = teacher_form.cleaned_data["hear_about_us"]
+                )
+                try:
+                    teacher_profile.save()
+                except Exception: 
+                    log.exception("TeacherProfile creation failed for user {id}.".format(id=user.id))
+                    raise
+
+
     except IntegrityError:
         # Figure out the cause of the integrity error
         if len(User.objects.filter(username=user.username)) > 0:
@@ -1543,14 +1609,19 @@ def _do_create_account(form, custom_form=None):
     password_history_entry.create(user)
 
     registration.register(user)
+    
+    first_name = form.cleaned_data["first_name"]
+    last_name = form.cleaned_data["last_name"]
 
     profile_fields = [
-        "name", "level_of_education", "gender", "mailing_address", "city", "country", "goals",
+        "level_of_education", "gender", "mailing_address", "city", "country", "goals",
         "year_of_birth"
     ]
     profile = UserProfile(
         user=user,
+        name=first_name+' '+last_name,
         **{key: form.cleaned_data.get(key) for key in profile_fields}
+    
     )
     extended_profile = form.cleaned_extended_profile
     if extended_profile:
@@ -1594,7 +1665,11 @@ def create_account_with_params(request, params):
     # Copy params so we can modify it; we can't just do dict(params) because if
     # params is request.POST, that results in a dict containing lists of values
     params = dict(params.items())
-
+    #log.debug("reg_type is {reg}".format(reg=params["reg_type"]))
+    #NEW: Check which registration type
+    if ((params["reg_type"]!="1")&(params["reg_type"]!="2")):
+        raise ValidationError({"reg_type": "You must select if you are a teacher or student"})
+    
     # allow for microsites to define their own set of required/optional/hidden fields
     extra_fields = microsite.get_value(
         'REGISTRATION_EXTRA_FIELDS',
@@ -1657,10 +1732,20 @@ def create_account_with_params(request, params):
     )
     custom_form = get_registration_extension_form(data=params)
 
+    student_form = None
+    teacher_form = None
+
+    if params["reg_type"] == "1": # Create a student profile form
+        student_form = StudentRegistrationForm(data=params)
+    elif params["reg_type"]== "2": # Create a teacher's profile form
+        log.warning("Making a teacher profile form")
+        teacher_form = TeacherRegistrationForm(data=params)
+
+
     # Perform operations within a transaction that are critical to account creation
     with transaction.atomic():
         # first, create the account
-        (user, profile, registration) = _do_create_account(form, custom_form)
+        (user, profile, registration) = _do_create_account(form, custom_form,student_form,teacher_form)
 
         # next, link the account with social auth, if provided via the API.
         # (If the user is using the normal register page, the social auth pipeline does the linking, not this code)
@@ -1806,7 +1891,7 @@ def create_account_with_params(request, params):
     else:
         registration.activate()
         _enroll_user_in_pending_courses(user)  # Enroll student in any pending courses
-
+    # ----- CHANGED THIS: FEATURE NOW LOGS OUT AFTER DASHBOARD ------
     # Immediately after a user creates an account, we log them in. They are only
     # logged in until they close the browser. They can't log in again until they click
     # the activation link from the email.

@@ -99,6 +99,9 @@ from .entrance_exams import (
 from .module_render import toc_for_course, get_module_for_descriptor, get_module, get_module_by_usage_id
 
 from lang_pref import LANGUAGE_KEY
+from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
+
+from student.helpers import is_teacher_of
 
 log = logging.getLogger("edx.courseware")
 
@@ -1004,14 +1007,15 @@ def _progress(request, course_key, student_id):
     # the user can access the course.
     if survey.utils.must_answer_survey(course, request.user):
         return redirect(reverse('course_survey', args=[unicode(course.id)]))
-
+    
+    teacher_access = bool(has_access(request.user,'teacher',course_key))
     staff_access = bool(has_access(request.user, 'staff', course))
     try:
         coach_access = has_ccx_coach_role(request.user, course_key)
     except CCXLocatorValidationException:
         coach_access = False
 
-    has_access_on_students_profiles = staff_access or coach_access
+    has_access_on_students_profiles = staff_access or coach_access or teacher_access
 
     if student_id is None or student_id == request.user.id:
         # always allowed to see your own profile
@@ -1024,6 +1028,8 @@ def _progress(request, course_key, student_id):
             student = User.objects.get(id=student_id)
         # Check for ValueError if 'student_id' cannot be converted to integer.
         except (ValueError, User.DoesNotExist):
+            raise Http404
+        if (teacher_access and not is_teacher_of(student,request.user,course_key)):
             raise Http404
 
     # NOTE: To make sure impersonation by instructor works, use

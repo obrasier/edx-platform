@@ -6,6 +6,7 @@ import urlparse
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import logout 
 from django.contrib.auth.decorators import login_required
 from django.http import (
     HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
@@ -26,6 +27,8 @@ from external_auth.login_and_register import (
     login as external_auth_login,
     register as external_auth_register
 )
+
+from student.cookies import delete_logged_in_cookies
 from student.models import UserProfile
 from student.views import (
     signin_user as old_login_view,
@@ -40,6 +43,7 @@ from util.bad_request_rate_limiter import BadRequestRateLimiter
 from openedx.core.djangoapps.user_api.accounts.api import request_password_change
 from openedx.core.djangoapps.user_api.errors import UserNotFound
 
+from edxmako.shortcuts import render_to_string
 
 AUDIT_LOG = logging.getLogger("audit")
 
@@ -61,8 +65,10 @@ def login_and_registration_form(request, initial_mode="login"):
     redirect_to = get_next_url_for_login_page(request)
 
     # If we're already logged in, redirect to the dashboard
-    if request.user.is_authenticated():
+    if request.user.is_authenticated() and request.user.is_active:
         return redirect(redirect_to)
+    
+       
 
     # Retrieve the form descriptions from the user API
     form_descriptions = _get_form_descriptions(request)
@@ -117,9 +123,26 @@ def login_and_registration_form(request, initial_mode="login"):
         'allow_iframing': True,
         'disable_courseware_js': True,
         'disable_footer': True,
+        #'message': message,
     }
-
-    return render_to_response('student_account/login_and_register.html', context)
+    
+    message = ""
+    if not request.user.is_active and request.user.is_authenticated():
+        #context['message'] = "verify your e-mail address"
+        message = render_to_string(
+            'registration/activate_account_notice.html',
+            {'email': request.user.email, 'platform_name': settings.PLATFORM_NAME}
+        )
+        context['message'] = message
+        logout(request)
+    
+    response = render_to_response('student_account/login_and_register.html', context)
+    
+    if not request.user.is_active and request.user.is_authenticated():
+        response = delete_logged_in_cookies(response)
+    
+    return response 
+    #return render_to_response('student_account/login_and_register.html', context)
 
 
 @require_http_methods(['POST'])

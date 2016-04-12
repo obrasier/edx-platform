@@ -22,7 +22,7 @@ if settings.DEBUG or settings.FEATURES.get('ENABLE_DJANGO_ADMIN_SITE'):
 # Use urlpatterns formatted as within the Django docs with first parameter "stuck" to the open parenthesis
 urlpatterns = (
     '',
-
+    url(r'^lookup$','student.views.lookup_school',name="lookup_school"),#NEW: serves the school database lookup
     url(r'^$', 'branding.views.index', name="root"),   # Main marketing page, or redirect to courseware
     url(r'^dashboard$', 'student.views.dashboard', name="dashboard"),
     url(r'^login_ajax$', 'student.views.login_user', name="login"),
@@ -508,7 +508,15 @@ urlpatterns += (
         'instructor.views.instructor_dashboard.instructor_dashboard_2',
         name='instructor_dashboard',
     ),
-
+    
+    # For the teacher
+    url(
+        r'^courses/{}/teacher$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        'instructor.views.instructor_dashboard.teacher_dashboard',
+        name='teacher_dashboard'
+    ),
 
     url(
         r'^courses/{}/set_course_mode_price$'.format(

@@ -1,0 +1,55 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%page args="section_data"/>
+<div class="teacher-dashboard-class-view">
+    <ul>
+    % for c in section_data["my_classes"]:
+    <li>
+    <div class="teacher-dashboard-class-item">
+            <div class="teacher-dashboard-class-header">
+            <ul> 
+                <li> Short Name: ${c["short_name"]}
+                <li> Class Name: ${c["class_name"]}
+                <li> Class Code: ${c["class_code"]}
+                <li> Total Accounts: ${c["total_accounts"]}
+            </ul>
+        </div>
+        <div class="teacher-dashboard-class-body">
+            <ul>
+                <li> Grade: ${c["grade"]}
+                <li> Subject: ${c["subject"]}
+                <li> School:${c["school_name"]}
+                <li> Number Of Students:${c["no_of_students"]}
+                <li> Active Accounts: ${c["active_accounts"]}
+                <li> Inactive Accounts: ${c["total_accounts"]-c["active_accounts"]}
+                <li> Assessment: ${c["assessment"]}
+            </ul>
+        </div>
+        <div class="teacher-dashboard-class-timetable">
+        </div>
+    </div>
+    % endfor
+    </ul>
+</div>
+
+<div class="create-class-button">
+    <img src="/static/admin/img/icon_addlink.gif" width="10" height="10" alt="Add"> Create Class
+</div>
+
+<div class="teacher-dashboard-class-form">
+    <div id="new-class-set-form" class="form-wrapper">
+        <form id="create-class-set" action="teacher" method="post">
+            <div id="form-errors">
+            </div>
+            <div class="section-title lines">
+                <h2>
+                    <span class="text">Create a new class</span>
+                </h2>
+            </div>
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
+            ${ section_data['class_set_form'] }
+            <input type="submit" value="Submit" />
+        </form>
+        
+    </div>
+</div>
+

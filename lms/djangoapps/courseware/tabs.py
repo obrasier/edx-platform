@@ -88,6 +88,7 @@ class ProgressTab(EnrolledTab):
         return not course.hide_progress_tab
 
 
+
 class TextbookTabsBase(CourseTab):
     """
     Abstract class for textbook collection tabs classes.

@@ -218,6 +218,16 @@ class CourseStaffRole(CourseRole):
     def __init__(self, *args, **kwargs):
         super(CourseStaffRole, self).__init__(self.ROLE, *args, **kwargs)
 
+#NEW: CourseTeacherRole
+@register_access_role
+class CourseTeacherRole(CourseRole):
+    """A Teacer member of a course who can manage their classroom listed by their subset of students"""
+    ROLE = 'teacher'
+
+    def __init__(self, *args, **kwargs):
+        super(CourseTeacherRole, self).__init__(self.ROLE, *args, **kwargs)
+
+
 
 @register_access_role
 class CourseInstructorRole(CourseRole):

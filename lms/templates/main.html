@@ -83,6 +83,9 @@ from pipeline_mako import render_require_js_path_overrides
     ${render_require_js_path_overrides(settings.REQUIRE_JS_PATH_OVERRIDES)}
   </%block>
 
+        <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+   <!--     <script src="http://code.jquery.com/jquery-1.10.2.js"></script> -->
+        <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
   % if not disable_courseware_js:
     <%static:js group='module-js'/>
   % endif

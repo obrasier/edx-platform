@@ -171,6 +171,8 @@ class AuthListWidget extends MemberListWidget
       @show_errors _.template(msg, {username: data.unique_student_identifier})
     else if data.removingSelfAsInstructor
       @show_errors gettext "Error: You cannot remove yourself from the Instructor group!"
+    else if data.noTeacherProfile
+      @show_errors gettext "Error: User's account was not registered with a teacher profile!"
     else
       @reload_list()
 
