@@ -54,7 +54,17 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from util.model_utils import emit_field_changed_events, get_changed_fields_dict
 from util.query import use_read_replica_if_available
 from util.milestones_helpers import is_entrance_exams_enabled
+# NEW FEATURE: Australian Teacher and Classes Tier
+import struct
+from Crypto.Cipher import DES
+from .utils import base36encode, base36decode
+from django.core.validators import RegexValidator, ValidationError
 
+#For RandomIdModel
+import string
+import random
+from django.db.utils import IntegrityError
+from django.db       import models, transaction
 
 UNENROLL_DONE = Signal(providing_args=["course_enrollment", "skip_refund"])
 log = logging.getLogger(__name__)
@@ -504,7 +514,28 @@ class Registration(models.Model):
 
     def activate(self):
         self.user.is_active = True
+        self._track_activation()
         self.user.save()
+
+    def _track_activation(self):
+        """ Update the isActive flag in mailchimp for activated users."""
+        has_segment_key = getattr(settings, 'LMS_SEGMENT_KEY', None)
+        has_mailchimp_id = hasattr(settings, 'MAILCHIMP_NEW_USER_LIST_ID')
+        if has_segment_key and has_mailchimp_id:
+            identity_args = [
+                self.user.id,  # pylint: disable=no-member
+                {
+                    'email': self.user.email,
+                    'username': self.user.username,
+                    'activated': 1,
+                },
+                {
+                    "MailChimp": {
+                        "listId": settings.MAILCHIMP_NEW_USER_LIST_ID
+                    }
+                }
+            ]
+            analytics.identify(*identity_args)
 
 
 class PendingNameChange(models.Model):
@@ -1489,7 +1520,7 @@ class ManualEnrollmentAudit(models.Model):
         """
         saves the student manual enrollment information
         """
-        cls.objects.create(
+        return cls.objects.create(
             enrolled_by=user,
             enrolled_email=email,
             state_transition=state_transition,
@@ -1726,10 +1757,11 @@ def log_successful_login(sender, request, user, **kwargs):  # pylint: disable=un
 @receiver(user_logged_out)
 def log_successful_logout(sender, request, user, **kwargs):  # pylint: disable=unused-argument
     """Handler to log when logouts have occurred successfully."""
-    if settings.FEATURES['SQUELCH_PII_IN_LOGS']:
-        AUDIT_LOG.info(u"Logout - user.id: {0}".format(request.user.id))
-    else:
-        AUDIT_LOG.info(u"Logout - {0}".format(request.user))
+    if hasattr(request, 'user'):
+        if settings.FEATURES['SQUELCH_PII_IN_LOGS']:
+            AUDIT_LOG.info(u"Logout - user.id: {0}".format(request.user.id))  # pylint: disable=logging-format-interpolation
+        else:
+            AUDIT_LOG.info(u"Logout - {0}".format(request.user))  # pylint: disable=logging-format-interpolation
 
 
 @receiver(user_logged_in)
@@ -2066,3 +2098,403 @@ class EnrollmentRefundConfiguration(ConfigurationModel):
     def refund_window(self, refund_window):
         """Set the current refund window to the given timedelta."""
         self.refund_window_microseconds = int(refund_window.total_seconds() * 1000000)
+
+
+
+
+# NEW FEATURE: Australian Teacher and Classes Tier
+
+class StudentProfile(models.Model):
+    """
+    This model contains two extra fields that will be saved when a user registers.
+    The form that wraps this model is in the forms.py file.
+    """
+    user = models.OneToOneField(User, 
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    
+    SCHOOL_GRADES = (
+        ('K','K'),
+        ('1','Year 1'),
+        ('2','Year 2'),
+        ('3','Year 3'),
+        ('4','Year 4'),
+        ('5','Year 5'),
+        ('6','Year 6'),
+        ('7','Year 7'),
+        ('8','Year 8'),
+        ('9','Year 9'),
+        ('10','Year 10'),
+        ('11','Year 11'),
+        ('12','Year 12'),
+        ('T','Tertiary'),
+    )
+    school_grade = models.CharField(
+        max_length=2,
+        choices = SCHOOL_GRADES,
+        null = False,
+        blank = True,
+    )
+    
+    #aboriginal or torres strait islander
+    indigenous = models.BooleanField(
+        default=False,
+    )    
+    classSet = models.ManyToManyField('ClassSet')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+        
+ 
+
+class TeacherProfile(models.Model):
+    """
+    This model contains fields for teacher contact and survey information
+    """
+    user = models.OneToOneField(User, 
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+
+    school = models.ForeignKey('School',null=True)
+    
+    #use extensions for hyphens. Extensions should be inserted in a separate form field and concatenated after cleaning.
+    phone = models.CharField(
+        max_length=25,
+        null = True,
+        #validators = [RegexValidator(regex="^(\+\d{9,12}|0\d{9})(\(\d{1,4}\))?$",message=_("Invalid number format. Either use international format (+61299999999) or local number with area code (0299999999). No spaces or hyphens."))]
+    )
+
+    HEAR_FROM = (
+        ('MM','Participated in MadMaker 2015'),
+        ('FR','Friend'),
+        ('FA','Family Member'),
+        ('CO','Colleague'),
+        ('SY','Sydney Uni Marketing & Comms'),
+        ('SM','Social Media'), 
+        ('SE','Search Engine'), 
+        ('CE','Conference or Event'),
+        ('O','Other'), 
+    )
+    hear_about_us = models.CharField(
+        max_length=2,
+        choices = HEAR_FROM,
+        null = True,
+        blank = True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+class School(models.Model):
+    """
+    #This model contains school names and information
+    """
+    acara_id = models.IntegerField(unique=True,primary_key=False)
+
+    school_name = models.CharField(
+        max_length=100,
+    )
+
+    street_address = models.CharField(
+        max_length = 100,
+    )
+    
+    suburb = models.CharField(
+        max_length = 100,
+    )
+    
+    state = models.CharField(
+        max_length = 10,
+    )
+
+    postcode = models.CharField(
+        max_length = 10,
+    )
+    
+    SCHOOL_SECTORS=(
+        ('G','Government'),
+        ('C','Catholic'),
+        ('I','Independent'),
+    )
+    
+    school_sector =  models.CharField(
+        max_length=1,
+        choices = SCHOOL_SECTORS,
+    ) 
+
+    SCHOOL_TYPES = (
+        ('P','Primary'),
+        ('S','Secondary'),
+        ('C','Combined'),
+        ('O','Special'),
+    )
+    
+    school_type = models.CharField(
+        max_length=1,
+        choices = SCHOOL_TYPES,
+    )
+
+    def __unicode__(self):              # __str__ on Python 3
+        display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state),unicode(self.postcode)]
+        return ', '.join(display)
+
+
+class EncryptedPKModelManager(models.Manager):
+    """This manager allows models to be identified based on their encrypted_pk value."""
+
+    def get(self, *args, **kwargs):
+        encrypted_pk = kwargs.pop('encrypted_pk', None)
+        if encrypted_pk:
+            # If found, decrypt encrypted_pk argument and set pk argument to the appropriate value
+            encryption_obj = DES.new(self.model.PK_SECRET_KEY) # This 8 character secret key should be changed!
+            kwargs['pk'] = struct.unpack('<Q', encryption_obj.decrypt(
+                struct.pack('<Q', base36decode(encrypted_pk))
+            ))[0]
+
+        return super(EncryptedPKModelManager, self).get(*args, **kwargs)
+
+
+class EncryptedPKModel(models.Model):
+    """Adds encrypted_pk property to children which returns the encrypted value of the primary key."""
+
+    def __init__(self, *args, **kwargs):
+        super(EncryptedPKModel, self).__init__(*args, **kwargs)
+        setattr(
+            self.__class__,
+            "encrypted_%s" % (self._meta.pk.name,),
+            property(self.__class__._encrypted_pk)
+        )   
+
+    def _encrypted_pk(self):
+        encryption_obj = DES.new(self.PK_SECRET_KEY) # This 8 character secret key should be changed!
+        return base36encode(struct.unpack('<Q', encryption_obj.encrypt(
+            str(struct.pack('<Q', self.pk))
+        ))[0])
+
+    encrypted_pk = property(_encrypted_pk)
+
+    class Meta:
+        abstract = True
+
+
+# Responsible for returning encrypted pk
+#class ClassSetManager(EncryptedPKModelManager):
+#    pass
+
+# FROM: https://github.com/jbrendel/django-randomprimary
+
+class RandomPrimaryIdModel(models.Model):
+    """
+    FROM: https://github.com/jbrendel/django-randomprimary
+    """
+    
+    def _get_prefix(self):
+        _lastname_clean = ''.join([x for x in self.teacher.last_name if x.isalpha()])
+        _firstname_clean = ''
+        if len(_lastname_clean[:4])<4:
+            _firstname_clean = ''.join([x for x in self.teacher.first_name])[:(len(_lastname_clean[:4])-4)]
+        return (_firstname_clean+_lastname_clean).upper()
+
+    #KEYPREFIX         = ""
+    KEYSUFFIX         = ""
+    CRYPT_KEY_LEN_MIN = 4
+    CRYPT_KEY_LEN_MAX = 4
+    _FIRSTIDCHAR      = string.digits #string.ascii_uppercase                 # First char: Always a letter
+    _IDCHARS          = string.digits #+ string.ascii_uppercase  # Letters and digits for the rest
+
+    """ Our new ID field """
+    class_code = models.CharField(db_index    = True,
+                          max_length  = CRYPT_KEY_LEN_MAX+1+4+len(KEYSUFFIX),
+                          unique      = True)
+
+        
+    def __init__(self, *args, **kwargs):
+        """
+        Nothing to do but to call the super class' __init__ method and initialize a few vars.
+        """
+        super(RandomPrimaryIdModel, self).__init__(*args, **kwargs)
+        self._retry_count = 0    # used for testing and debugging, nothing else
+
+    def _make_random_key(self, key_len, key_prefix):
+        """
+        Produce a new unique primary key.
+        This ID always starts with a letter, but can then have numbers
+        or letters in the remaining positions.
+        Whatever is specified in KEYPREFIX or KEYSUFFIX is pre/appended
+        to the generated key.
+        """
+        return key_prefix + random.choice(self._FIRSTIDCHAR) + \
+               ''.join([ random.choice(self._IDCHARS) for dummy in xrange(0, key_len-1) ]) + \
+               self.KEYSUFFIX
+
+    def save(self, *args, **kwargs):
+        """
+        Modified save() function, which selects a special unique ID if necessary.
+        Calls the save() method of the first model.Models base class it can find
+        in the base-class list.
+        """
+        if self.class_code:
+            # Apparently, we know our ID already, so we don't have to
+            # do anything special here.
+            super(RandomPrimaryIdModel, self).save(*args, **kwargs)
+            return
+
+        try_key_len                     = self.CRYPT_KEY_LEN_MIN
+        try_since_last_key_len_increase = 0
+        while try_key_len <= self.CRYPT_KEY_LEN_MAX:
+            # Randomly choose a new unique key
+            _class_code = self._make_random_key(try_key_len,self._get_prefix())
+            sid = transaction.savepoint()       # Needed for Postgres, doesn't harm the others
+            try:
+                #if kwargs is None:
+                #    kwargs = dict()
+                #kwargs['force_insert'] = True           # If force_insert is already present in
+                                                        # kwargs, we want to make sure it's
+                                                        # overwritten. Also, by putting it here
+                                                        # we can be sure we don't accidentally
+                                                        # specify it twice.
+                self.class_code = _class_code
+                super(RandomPrimaryIdModel, self).save(*args, **kwargs)
+                break                                   # This was a success, so we are done here
+
+            except IntegrityError, e:                   # Apparently, this key is already in use
+                # Only way to differentiate between different IntegrityErrors is to look
+                # into the message string. Too bad. But I need to make sure I only catch
+                # the ones for the 'class_code' column.
+                #
+                # Sadly, error messages from different databases look different and Django does
+                # not normalize them. So I need to run more than one test. One of these days, I
+                # could probably just examine the database settings, figure out which DB we use
+                # and then do just a single correct test.
+                #
+                # Just to complicates things a bit, the actual error message is not always in
+                # e.message, but may be in the args of the exception. The args list can vary
+                # in length, but so far it seems that the message is always the last one in
+                # the args list. So, that's where I get the message string from. Then I do my
+                # DB specific tests on the message string.
+                #
+                msg = e.args[-1]
+                print msg
+                if msg.endswith("for key 'PRIMARY'") or msg == "column class_code is not unique" or \
+                        "Key (class_code)=" in msg:
+                    transaction.savepoint_rollback(sid) # Needs to be done for Postgres, since
+                                                        # otherwise the whole transaction is
+                                                        # cancelled, if this is part of a larger
+                                                        # transaction.
+
+                    self._retry_count += 1              # Maintained for debugging/testing purposes
+                    try_since_last_key_len_increase += 1
+                    if try_since_last_key_len_increase == try_key_len:
+                        # Every key-len tries, we increase the key length by 1.
+                        # This means we only try a few times at the start, but then try more
+                        # and more for larger key sizes.
+                        try_key_len += 1
+                        try_since_last_key_len_increase = 0
+                else:
+                    # Some other IntegrityError? Need to re-raise it...
+                    raise e
+
+        else:
+            # while ... else (just as a reminder): Execute 'else' if while loop is exited normally.
+            # In our case, this only happens if we finally run out of attempts to find a key.
+            self.class_code = None
+            raise IntegrityError("Could not produce unique ID for model of type %s" % type(self))
+
+    class Meta:
+        abstract = True
+
+
+#note: Do not create a ClassSet with the shell, because if you delete the classcode, saving the model
+# will generate a new classcode.
+
+class ClassSet(RandomPrimaryIdModel):
+    """
+    Class information for teachers.
+    """
+    #PK_SECRET_KEY = '53cR3tk3' #must be 8 characters exact
+    #objects = ClassSetManager()             #encrypted pk for sharing
+    created_by = models.ForeignKey(User,null=False,related_name='classes_created')
+    teacher = models.ForeignKey(User,null=False, related_name='classes_taught')
+    short_name =  models.CharField(max_length=12,null=True)         #for quick reference for teacher dashboard display
+    class_name = models.CharField(max_length=50,null=True)        #unique for public display
+    school = models.ForeignKey('School',null=False)
+    
+    course_id = CourseKeyField(db_index=True, max_length=255, blank=True) 
+    grade = models.CharField(max_length=12,null=True)
+    subject = models.ManyToManyField('Subject',blank=True)
+    assessment = models.BooleanField(default=False)     #for survey purposes
+    no_of_students = models.IntegerField(null=True)
+    
+    def __unicode__(self):              # __str__ on Python 3
+        return self.short_name
+
+    def size(self, is_active=None):
+        if is_active == None:
+            return self.studentprofile_set.count()
+        else:
+            return self.studentprofile_set.filter(user__is_active=is_active).count()
+
+    
+    def save(self, *args, **kwargs):
+        # verify that teacher's expected class size >= number of active enrolments
+        if self.no_of_students < self.size(True):
+            self.no_of_students = self.size(True)
+        try:
+            self.school
+        except School.DoesNotExist: 
+            try:
+                self.school = self.teacher.teacherprofile.school
+            except TeacherProfile.DoesNotExist:
+                raise ValidationError({"teacher":"Supplied user as teacher does not have a verified teacher account"})
+        super(ClassSet, self).save(*args, **kwargs)
+
+class ClassTime(models.Model):
+    """
+    For rostering tutors on for chat help
+    """
+    classSet = models.ForeignKey(ClassSet,null=False)
+    time_from = models.TimeField()
+    time_to = models.TimeField()
+   
+    WEEKDAYS = (
+        ('MON','Monday'),
+        ('TUE','Tuesday'),
+        ('WED','Wednesday'),
+        ('THU','Thursday'),
+        ('FRI','Friday'),
+    )
+    day = models.CharField(max_length=3,choices=WEEKDAYS) 
+    
+    TIMEZONES = (
+       ('AEST','Australian Eastern Standard Time'),
+       ('AEDT','Australian Eastern Daylight Time'),
+       ('ACST','Australian Central Standard Time'),
+       ('ACDT','Australian Central Daylight Time'),
+       ('AWST','Australian Western Standard Time'),
+    )
+
+    timezone = models.CharField(max_length=4,choices=TIMEZONES)                       #watchout for timezones 
+    
+    comments = models.CharField(max_length=100,blank=True,null=True)                       #incase of week A week B
+
+
+#class SchoolGrade(models.Model):
+#    """
+#    School grade level. Would have made some more strict choices, 
+#    but would like to see what "other" options get created. "default_list"
+#    determines whether the school grades should be listed in the form.
+#    """
+#    description = models.CharField(max_length=12,null=False)
+#    default_list = models.BooleanField(default=False)
+    
+
+class Subject(models.Model):
+    description = models.CharField(max_length=30)
+    default_list = models.BooleanField(default=False)
+    
+    def __unicode__(self):
+        return self.description
+

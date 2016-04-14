@@ -8,7 +8,9 @@ from django.core.urlresolvers import reverse, NoReverseMatch
 import third_party_auth
 from lms.djangoapps.verify_student.models import VerificationDeadline, SoftwareSecurePhotoVerification
 from course_modes.models import CourseMode
-
+from student.models import School, ClassSet, TeacherProfile, StudentProfile, UserProfile
+from django.db.models import Q
+from django.contrib.auth.models import User
 
 # Enumeration of per-course verification statuses
 # we display on the student dashboard.
@@ -230,3 +232,117 @@ def get_next_url_for_login_page(request):
         # be saved in the session as part of the pipeline state. That URL will take priority
         # over this one.
     return redirect_to
+
+def check_classcode_exists(classcode):
+    """
+    Checks that the classcode exists. Takes a string input. Should be cleaned. no lowercase. 
+    """
+
+    if classcode is not None:
+        try:
+            ClassSet.objects.get(class_code=classcode)
+        except ClassSet.DoesNotExist:
+            return False
+        return True
+    else:
+        return False
+
+def check_school_exists(school_id,school_name):
+    """
+    Checks that the school exists and school_name and id match. Takes a string input. 
+
+    """
+
+    if school_id is not None and School.objects.filter(acara_id=school_id).exists():
+        if str(School.objects.get(acara_id=school_id))==school_name:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def search_school_details(query,max_results):
+    """
+    Given a search query, returns a list of school dictionaries matching the query by school name, suburb, state and postcode. 
+    Gives an empty list if the query exceeds more than "max_results" number of results.
+    """    
+    schoolValueQuerySet = School.objects.filter(Q(school_name__icontains=query)|Q(suburb__icontains=query)|Q(postcode__icontains=query)).values('acara_id','school_name','suburb','state','postcode')[:max_results]
+    resultCount = schoolValueQuerySet.count()
+    if resultCount == 0:
+        return []
+    else: 
+        schoolList= list(schoolValueQuerySet)
+        # concatenate the school details into one
+        for school in schoolList:
+            school["label"] = ", ".join([school["school_name"],school["suburb"],school["state"],school["postcode"]])
+            school["value"]=school.pop("school_name")
+            school["details"]=", ".join([school.pop("suburb"),school.pop("state"),school.pop("postcode")])
+        return schoolList
+
+def get_user_type(user):
+    try:
+        user.studentprofile
+        return 'student'
+    except StudentProfile.DoesNotExist:
+        try:
+            user.teacherprofile
+            return 'teacher'
+        except TeacherProfile.DoesNotExist:
+            return 'undefined'
+
+def is_teacher(user):
+    try:
+        user.teacherprofile
+        return True
+    except TeacherProfile.DoesNotExist:
+        return False
+
+def is_teacher_of(student,user,course_key=None):
+    """
+    Returns boolean to whether user is a teacher of student. This does not check for CourseTeacherRole - 
+    This assumes it is being handled by a higher level wrapper. If a course_id (CourseKeyField) is specified,
+    then it'll only look for teacher within a specific ClassSet with a specific CourseKey. If there is no matching
+    CourseKey then it returns false.
+    """
+    try:
+        sp = student.studentprofile
+    except StudentProfile.DoesNotExist:
+        return False
+    
+    if course_id:
+        student_classes =  sp.classSet.filter(course_id=course_key)
+    else:
+        student_classes = sp.classSet.all()
+    for c in student_classes:
+        if c.teacher == user:
+            return True
+    return False
+
+def is_student(user):
+    try:
+        user.studentprofile
+        return True
+    except StudentProfile.DoesNotExist:
+        return False
+
+def get_class_size(class_set,is_active=None):
+    """
+    Retrieves number of studentprofiles matched for the class_set. 
+    If active=None, counts students irrespective of whether they are active
+    or not. Otherwise, counts all (in)active students in the class for active= (false)true.
+    """
+    if is_active == None:
+        return class_set.studentprofile_set.count()
+    else:
+        return class_set.studentprofile_set.filter(user__is_active=is_active).count()
+
+# assumes already checked for teacher profile
+def get_my_classes(user, course_id=None):
+    """
+    Returns a QuerySet
+    """
+    if course_id:
+        return user.classes_taught.filter(course_id=course_id)
+    else:
+        return user.classes_taught.all()

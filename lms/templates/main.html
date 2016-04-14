@@ -6,7 +6,6 @@ from django.utils.http import urlquote_plus
 from django.utils.translation import ugettext as _
 from django.utils.translation import get_language_bidi
 from microsite_configuration import microsite
-from microsite_configuration import page_title_breadcrumbs
 from branding import api as branding_api
 %>
 <!DOCTYPE html>
@@ -41,7 +40,7 @@ from branding import api as branding_api
 <%def name="pagetitle()" />
   <%block name="title">
       <title>
-       ${page_title_breadcrumbs(self.pagetitle())}
+       ${static.get_page_title_breadcrumbs(self.pagetitle())}
       </title>
   </%block>
 
@@ -90,7 +89,10 @@ from branding import api as branding_api
     }).call(this, require || RequireJS.require);
   </script>
   <script type="text/javascript" src="${static.url("lms/js/require-config.js")}"></script>
-
+        
+        <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+   <!--     <script src="http://code.jquery.com/jquery-1.10.2.js"></script> -->
+        <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
   % if not disable_courseware_js:
     <%static:js group='module-js'/>
   % endif
@@ -152,6 +154,7 @@ from branding import api as branding_api
   <script type="text/javascript" src="${static.url('js/vendor/noreferrer.js')}" charset="utf-8"></script>
   <script type="text/javascript" src="${static.url('js/utils/navigation.js')}" charset="utf-8"></script>
   <%static:optional_include_mako file="body-extra.html" with_microsite="True" />
+        
 </body>
 </html>
 

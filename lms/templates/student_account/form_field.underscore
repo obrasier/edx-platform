@@ -1,8 +1,16 @@
-<div class="form-field <%=type%>-<%= name %>">
+<% if (reg_type>0){%>
+    <% if (required){%>
+        <% var reg_req = true %>
+        <% required = false %>
+<% }} %>
+<div class="form-field <%=type%>-<%= name %>"
+    <% if (reg_type === 2) {%>
+        style="display: none;"
+    <% } %>    >
     <% if ( type !== 'checkbox' ) { %>
         <label for="<%= form %>-<%= name %>">
             <%= label %>
-            <% if ( required && requiredStr ) { %> <%= requiredStr %></label><% } %>
+            <% if ( (required || reg_req) && requiredStr ) { %> <%= requiredStr %></label><% } %>
         </label>
     <% } %>
 
@@ -54,16 +62,17 @@
             <% if ( placeholder ) { %> placeholder="<%= placeholder %>"<% } %>
             value="<%- defaultValue %>"
         />
+
         <% if ( type === 'checkbox' ) { %>
             <label for="<%= form %>-<%= name %>">
                 <%= label %>
-                <% if ( required && requiredStr ) { %> <%= requiredStr %><% } %>
+                <% if ( (required || reg_req )&& requiredStr ) { %> <%= requiredStr %><% } %>
             </label>
         <% } %>
         <% if ( instructions ) { %> <span class="tip tip-input" id="<%= form %>-<%= name %>-desc"><%= instructions %></span><% } %>
     <% } %>
-
     <% if( form === 'login' && name === 'password' ) { %>
         <a href="#" class="forgot-password field-link"><%- gettext("Forgot password?") %></a>
     <% } %>
 </div>
+

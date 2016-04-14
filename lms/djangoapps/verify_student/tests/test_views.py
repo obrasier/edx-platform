@@ -301,7 +301,7 @@ class TestPayAndVerifyView(UrlResetMixin, ModuleStoreTestCase, XssTestMixin):
         response = self._get_page('verify_student_verify_now', course.id)
 
         self._assert_messaging(response, PayAndVerifyView.VERIFY_NOW_MSG)
-        self.assert_xss(response, '<script>alert("XSS")</script>')
+        self.assert_no_xss(response, '<script>alert("XSS")</script>')
 
         # Expect that *all* steps are displayed,
         # but we start after the payment step (because it's already completed).
@@ -375,7 +375,7 @@ class TestPayAndVerifyView(UrlResetMixin, ModuleStoreTestCase, XssTestMixin):
 
         self._assert_messaging(response, PayAndVerifyView.PAYMENT_CONFIRMATION_MSG)
 
-        self.assert_xss(response, '<script>alert("XSS")</script>')
+        self.assert_no_xss(response, '<script>alert("XSS")</script>')
 
         # Expect that *all* steps are displayed,
         # but we start at the payment confirmation step
@@ -410,7 +410,7 @@ class TestPayAndVerifyView(UrlResetMixin, ModuleStoreTestCase, XssTestMixin):
 
         self._assert_messaging(response, PayAndVerifyView.FIRST_TIME_VERIFY_MSG)
 
-        self.assert_xss(response, '<script>alert("XSS")</script>')
+        self.assert_no_xss(response, '<script>alert("XSS")</script>')
 
         # Expect that *all* steps are displayed,
         # but we start on the first verify step
@@ -497,7 +497,7 @@ class TestPayAndVerifyView(UrlResetMixin, ModuleStoreTestCase, XssTestMixin):
             PayAndVerifyView.WEBCAM_REQ,
         ])
         self._assert_upgrade_session_flag(True)
-        self.assert_xss(response, '<script>alert("XSS")</script>')
+        self.assert_no_xss(response, '<script>alert("XSS")</script>')
 
     def test_upgrade_already_verified(self):
         course = self._create_course("verified")
@@ -2297,7 +2297,7 @@ class TestEmailMessageWithCustomICRVBlock(ModuleStoreTestCase):
             "We have successfully verified your identity for the {assessment} "
             "assessment in the {course_name} course.".format(
                 assessment=self.assessment,
-                course_name=self.course.display_name_with_default
+                course_name=self.course.display_name_with_default_escaped
             ),
             body
         )
@@ -2316,7 +2316,7 @@ class TestEmailMessageWithCustomICRVBlock(ModuleStoreTestCase):
             "in the {course_name} course. You have used "
             "{used_attempts} out of {allowed_attempts} attempts to "
             "verify your identity".format(
-                course_name=self.course.display_name_with_default,
+                course_name=self.course.display_name_with_default_escaped,
                 assessment=self.assessment,
                 used_attempts=1,
                 allowed_attempts=self.allowed_attempts + 1
@@ -2361,7 +2361,7 @@ class TestEmailMessageWithCustomICRVBlock(ModuleStoreTestCase):
             "{used_attempts} out of {allowed_attempts} attempts to "
             "verify your identity, and verification is no longer "
             "possible".format(
-                course_name=self.course.display_name_with_default,
+                course_name=self.course.display_name_with_default_escaped,
                 assessment=self.assessment,
                 used_attempts=2,
                 allowed_attempts=self.allowed_attempts + 1
@@ -2385,7 +2385,7 @@ class TestEmailMessageWithCustomICRVBlock(ModuleStoreTestCase):
                 "{used_attempts} out of {allowed_attempts} attempts to "
                 "verify your identity, and verification is no longer "
                 "possible".format(
-                    course_name=self.course.display_name_with_default,
+                    course_name=self.course.display_name_with_default_escaped,
                     assessment=self.assessment,
                     used_attempts=1,
                     allowed_attempts=self.allowed_attempts + 1
@@ -2494,7 +2494,7 @@ class TestEmailMessageWithDefaultICRVBlock(ModuleStoreTestCase):
             "{used_attempts} out of {allowed_attempts} attempts to "
             "verify your identity, and verification is no longer "
             "possible".format(
-                course_name=self.course.display_name_with_default,
+                course_name=self.course.display_name_with_default_escaped,
                 assessment=self.assessment,
                 used_attempts=1,
                 allowed_attempts=1

@@ -23,7 +23,7 @@ if settings.DEBUG or settings.FEATURES.get('ENABLE_DJANGO_ADMIN_SITE'):
 # Use urlpatterns formatted as within the Django docs with first parameter "stuck" to the open parenthesis
 urlpatterns = (
     '',
-
+    url(r'^lookup$','student.views.lookup_school',name="lookup_school"),#NEW: serves the school database lookup
     url(r'^$', 'branding.views.index', name="root"),   # Main marketing page, or redirect to courseware
     url(r'^dashboard$', 'student.views.dashboard', name="dashboard"),
     url(r'^login_ajax$', 'student.views.login_user', name="login"),
@@ -89,6 +89,9 @@ urlpatterns = (
     # User API endpoints
     url(r'^api/user/', include('openedx.core.djangoapps.user_api.urls')),
 
+    # Bookmarks API endpoints
+    url(r'^api/bookmarks/', include('openedx.core.djangoapps.bookmarks.urls')),
+
     # Profile Images API endpoints
     url(r'^api/profile_images/', include('openedx.core.djangoapps.profile_images.urls')),
 
@@ -98,6 +101,7 @@ urlpatterns = (
 
     url(r'^api/commerce/', include('commerce.api.urls', namespace='commerce_api')),
     url(r'^api/credit/', include('openedx.core.djangoapps.credit.urls', app_name="credit", namespace='credit')),
+    url(r'^rss_proxy/', include('rss_proxy.urls', namespace='rss_proxy')),
 )
 
 if settings.FEATURES["ENABLE_COMBINED_LOGIN_REGISTRATION"]:
@@ -202,9 +206,12 @@ for key, value in settings.MKTG_URL_LINK_MAP.items():
     if key == "ROOT" or key == "COURSES":
         continue
 
-    # Make the assumptions that the templates are all in the same dir
-    # and that they all match the name of the key (plus extension)
-    template = "%s.html" % key.lower()
+    # The MKTG_URL_LINK_MAP key specifies the template filename
+    template = key.lower()
+    if '.' not in template:
+        # Append STATIC_TEMPLATE_VIEW_DEFAULT_FILE_EXTENSION if
+        # no file extension was specified in the key
+        template = "%s.%s" % (template, settings.STATIC_TEMPLATE_VIEW_DEFAULT_FILE_EXTENSION)
 
     # To allow theme templates to inherit from default templates,
     # prepend a standard prefix
@@ -498,7 +505,15 @@ urlpatterns += (
         'instructor.views.instructor_dashboard.instructor_dashboard_2',
         name='instructor_dashboard',
     ),
-
+    
+    # For the teacher
+    url(
+        r'^courses/{}/teacher$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        'instructor.views.instructor_dashboard.teacher_dashboard',
+        name='teacher_dashboard'
+    ),
 
     url(
         r'^courses/{}/set_course_mode_price$'.format(
@@ -547,7 +562,6 @@ urlpatterns += (
         ),
         include(COURSE_URLS)
     ),
-    # see ENABLE_INSTRUCTOR_LEGACY_DASHBOARD section for legacy dash urls
 
     # Cohorts management
     url(
@@ -751,13 +765,6 @@ if settings.FEATURES.get('ENABLE_STUDENT_HISTORY_VIEW'):
             'courseware.views.submission_history',
             name='submission_history',
         ),
-    )
-
-
-if settings.FEATURES.get('ENABLE_INSTRUCTOR_LEGACY_DASHBOARD'):
-    urlpatterns += (
-        url(r'^courses/{}/legacy_instructor_dash$'.format(settings.COURSE_ID_PATTERN),
-            'instructor.views.legacy.instructor_dashboard', name="instructor_dashboard_legacy"),
     )
 
 if settings.FEATURES.get('CLASS_DASHBOARD'):

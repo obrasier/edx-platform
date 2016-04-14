@@ -43,6 +43,7 @@ from certificates.models import (
     GeneratedCertificate,
     CertificateStatuses,
     CertificateGenerationHistory,
+    CertificateInvalidation,
 )
 from certificates import api as certs_api
 from util.date_utils import get_default_time_display
@@ -51,8 +52,30 @@ from class_dashboard.dashboard_data import get_section_display_name, get_array_s
 from .tools import get_units_with_due_date, title_or_url, bulk_email_is_enabled_for_course
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
+from student.forms import ClassSetForm
+from django.forms.models import model_to_dict
+from student.helpers import is_teacher, get_my_classes, get_class_size
+
 log = logging.getLogger(__name__)
 
+#NEW: TeacherDashboardTab
+class TeacherDashboardTab(CourseTab):
+    """
+    Defines the Teacher Dashboard view type that is shown as a course tab.
+    """
+
+    type = "teacher"
+    title = ugettext_noop('Teacher Dashboard')
+    view_name = "teacher_dashboard"
+    is_dynamic = True    # The "Teacher Dashboard" tab is instead dynamically added when it is enabled
+
+    @classmethod
+    def is_enabled(cls, course, user=None):
+        """
+        Returns true if the specified user has staff access.
+        """
+        return bool(user and has_access(user, 'teacher', course.id))
+        return True
 
 class InstructorDashboardTab(CourseTab):
     """
@@ -71,6 +94,97 @@ class InstructorDashboardTab(CourseTab):
         """
         return bool(user and has_access(user, 'staff', course, course.id))
 
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+def teacher_dashboard(request, course_id):
+    """ Display the teacher dashboard for a course. """
+    try:
+        course_key = CourseKey.from_string(course_id)
+    except InvalidKeyError:
+        log.error(u"Unable to find course with course key %s while loading the Teacher Dashboard.", course_id)
+        return HttpResponseServerError()
+
+    course = get_course_by_id(course_key, depth=0)
+
+    access = {
+        'admin': request.user.is_staff,
+        'instructor': bool(has_access(request.user, 'instructor', course)),
+        'finance_admin': CourseFinanceAdminRole(course_key).has_user(request.user),
+        'sales_admin': CourseSalesAdminRole(course_key).has_user(request.user),
+        'staff': bool(has_access(request.user, 'staff', course)),
+        'forum_admin': has_forum_access(request.user, course_key, FORUM_ROLE_ADMINISTRATOR),
+        'teacher' : bool(has_access(request.user,'teacher', course_key)),
+    }
+
+    if not access['teacher']:
+        raise Http404("You do not have access to this page")
+
+    # This should never need to be raised, since assigning teacher access should always check for this first.
+    #if not is_teacher(request.user):
+    #    raise Http404("You have the wrong user type to access this page. Please contact the site administrator.")
+
+    is_white_label = CourseMode.is_white_label(course_key)
+    
+    class_form_dict = {}
+
+    if request.method == 'POST':
+        class_set_form = ClassSetForm(request.POST.copy())
+        if class_set_form.is_valid():
+            _new_class(class_set_form, course_key, request.user)
+            class_form_dict.update( {'success': 'Class successfully added!'})
+            class_set_form = ClassSetForm() # refresh to blank form
+        else:
+            pass                            # errors will be updated
+    else:
+        class_set_form = ClassSetForm()
+    
+
+    new_class_dict = _section_my_classes(course,access,request.user)
+    new_class_dict.update({'class_set_form': class_set_form})
+    
+    sections = [
+        _section_course_info(course, access),
+        new_class_dict
+    ]
+    
+    context = {
+        'course': course,
+        'sections': sections,
+    }
+
+    return render_to_response('instructor/teacher_dashboard/teacher_dashboard.html', context)
+
+    
+def _create_new_class(form, course_key, user):
+    pass
+
+def _section_my_classes(course, access, user):
+    """ Provide data for the corresponding dashboard section """
+    course_key = course.id
+
+    section_data = {
+        'section_key': 'my_classes',
+        'section_display_name': _('My Classes'),
+        'access': access,
+        'course_id': course_key,
+        'num_sections': len(course.children),
+        'class_set_form': ClassSetForm(),
+    }
+    
+    # get classes (a list of dictionaries)
+    classes = get_my_classes(user,course_key)
+    classes_info = []
+    for c in classes:
+        cdict = {}
+        cdict['total_accounts']=get_class_size(c)
+        cdict['active_accounts']=get_class_size(c,True)
+        cdict.update(model_to_dict(c,fields=['short_name','class_name','class_code','grade','subject','no_of_students' ,'assessment']))
+        cdict['school_name'] = c.school.__unicode__()
+        classes_info.append(cdict)
+    
+    section_data['my_classes'] = classes_info
+
+    return section_data
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -184,6 +298,13 @@ def instructor_dashboard_2(request, course_id):
         kwargs={'course_id': unicode(course_key)}
     )
 
+    certificate_invalidation_view_url = reverse(  # pylint: disable=invalid-name
+        'certificate_invalidation_view',
+        kwargs={'course_id': unicode(course_key)}
+    )
+
+    certificate_invalidations = CertificateInvalidation.get_certificate_invalidations(course_key)
+
     context = {
         'course': course,
         'studio_url': get_studio_url(course, 'course'),
@@ -191,12 +312,12 @@ def instructor_dashboard_2(request, course_id):
         'disable_buttons': disable_buttons,
         'analytics_dashboard_message': analytics_dashboard_message,
         'certificate_white_list': certificate_white_list,
+        'certificate_invalidations': certificate_invalidations,
         'generate_certificate_exceptions_url': generate_certificate_exceptions_url,
         'generate_bulk_certificate_exceptions_url': generate_bulk_certificate_exceptions_url,
-        'certificate_exception_view_url': certificate_exception_view_url
+        'certificate_exception_view_url': certificate_exception_view_url,
+        'certificate_invalidation_view_url': certificate_invalidation_view_url,
     }
-    if settings.FEATURES['ENABLE_INSTRUCTOR_LEGACY_DASHBOARD']:
-        context['old_dashboard_url'] = reverse('instructor_dashboard_legacy', kwargs={'course_id': unicode(course_key)})
 
     return render_to_response('instructor/instructor_dashboard_2/instructor_dashboard_2.html', context)
 
@@ -324,7 +445,8 @@ def _section_certificates(course):
         'active_certificate': certs_api.get_active_web_certificate(course),
         'certificate_statuses_with_count': certificate_statuses_with_count,
         'status': CertificateStatuses,
-        'certificate_generation_history': CertificateGenerationHistory.objects.filter(course_id=course.id),
+        'certificate_generation_history':
+            CertificateGenerationHistory.objects.filter(course_id=course.id).order_by("-created"),
         'urls': {
             'generate_example_certificates': reverse(
                 'generate_example_certificates',

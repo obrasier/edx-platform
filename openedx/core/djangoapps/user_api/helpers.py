@@ -6,8 +6,12 @@ from collections import defaultdict
 from functools import wraps
 import logging
 import json
-from django.http import HttpResponseBadRequest
 
+from django import forms
+from django.core.serializers.json import DjangoJSONEncoder
+from django.http import HttpResponseBadRequest
+from django.utils.encoding import force_text
+from django.utils.functional import Promise
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,12 +117,23 @@ class InvalidFieldError(Exception):
 class FormDescription(object):
     """Generate a JSON representation of a form. """
 
-    ALLOWED_TYPES = ["text", "email", "select", "textarea", "checkbox", "password"]
+    ALLOWED_TYPES = ["text", "email", "select", "radio", "textarea", "checkbox", "password", "hidden"]
 
     ALLOWED_RESTRICTIONS = {
         "text": ["min_length", "max_length"],
         "password": ["min_length", "max_length"],
         "email": ["min_length", "max_length"],
+    }
+
+    FIELD_TYPE_MAP = {
+        forms.CharField: "text",
+        forms.PasswordInput: "password",
+        forms.ChoiceField: "select",
+        forms.TypedChoiceField: "select",
+        forms.ChoiceField(widget=forms.RadioSelect): "radio",
+        forms.Textarea: "textarea",
+        forms.BooleanField: "checkbox",
+        forms.EmailField: "email",
     }
 
     OVERRIDE_FIELD_PROPERTIES = [
@@ -141,9 +156,9 @@ class FormDescription(object):
         self._field_overrides = defaultdict(dict)
 
     def add_field(
-        self, name, label=u"", field_type=u"text", default=u"",
-        placeholder=u"", instructions=u"", required=True, restrictions=None,
-        options=None, include_default_option=False, error_messages=None
+            self, name, label=u"", field_type=u"text", default=u"",
+            placeholder=u"", instructions=u"", required=True, restrictions=None,
+            options=None, include_default_option=False, error_messages=None, reg_type=None,
     ):
         """Add a field to the form description.
 
@@ -205,9 +220,13 @@ class FormDescription(object):
             "required": required,
             "restrictions": {},
             "errorMessages": {},
+            "reg_type": 0,
         }
 
-        if field_type == "select":
+        if reg_type is not None:
+            field_dict["reg_type"]=reg_type
+
+        if (field_type == "select")|(field_type=="radio"):
             if options is not None:
                 field_dict["options"] = []
 
@@ -297,7 +316,7 @@ class FormDescription(object):
             "method": self.method,
             "submit_url": self.submit_url,
             "fields": self.fields
-        })
+        }, cls=LocalizedJSONEncoder)
 
     def override_field_properties(self, field_name, **kwargs):
         """Override properties of a field.
@@ -328,6 +347,20 @@ class FormDescription(object):
             for property_name, property_value in kwargs.iteritems()
             if property_name in self.OVERRIDE_FIELD_PROPERTIES
         })
+
+
+class LocalizedJSONEncoder(DjangoJSONEncoder):
+    """
+    JSON handler that evaluates ugettext_lazy promises.
+    """
+    # pylint: disable=method-hidden
+    def default(self, obj):
+        """
+        Forces evaluation of ugettext_lazy promises.
+        """
+        if isinstance(obj, Promise):
+            return force_text(obj)
+        super(LocalizedJSONEncoder, self).default(obj)
 
 
 def shim_student_view(view_func, check_logged_in=False):

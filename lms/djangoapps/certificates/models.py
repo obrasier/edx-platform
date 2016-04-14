@@ -86,6 +86,8 @@ class CertificateStatuses(object):
     restricted = 'restricted'
     unavailable = 'unavailable'
     auditing = 'auditing'
+    audit_passing = 'audit_passing'
+    audit_notpassing = 'audit_notpassing'
 
     readable_statuses = {
         downloadable: "already received",
@@ -143,7 +145,7 @@ class CertificateWhitelist(models.Model):
         if student:
             white_list = white_list.filter(user=student)
         result = []
-        generated_certificates = GeneratedCertificate.objects.filter(
+        generated_certificates = GeneratedCertificate.eligible_certificates.filter(
             course_id=course_id,
             user__in=[exception.user for exception in white_list],
             status=CertificateStatuses.downloadable
@@ -168,10 +170,41 @@ class CertificateWhitelist(models.Model):
         return result
 
 
+class EligibleCertificateManager(models.Manager):
+    """
+    A manager for `GeneratedCertificate` models that automatically
+    filters out ineligible certs.
+
+    The idea is to prevent accidentally granting certificates to
+    students who have not enrolled in a cert-granting mode. The
+    alternative is to filter by eligible_for_certificate=True every
+    time certs are searched for, which is verbose and likely to be
+    forgotten.
+    """
+
+    def get_queryset(self):
+        """
+        Return a queryset for `GeneratedCertificate` models, filtering out
+        ineligible certificates.
+        """
+        return super(EligibleCertificateManager, self).get_queryset().exclude(
+            status__in=(CertificateStatuses.audit_passing, CertificateStatuses.audit_notpassing)
+        )
+
+
 class GeneratedCertificate(models.Model):
     """
     Base model for generated certificates
     """
+
+    # Only returns eligible certificates. This should be used in
+    # preference to the default `objects` manager in most cases.
+    eligible_certificates = EligibleCertificateManager()
+
+    # Normal object manager, which should only be used when ineligible
+    # certificates (i.e. new audit certs) should be included in the
+    # results. Django requires us to explicitly declare this.
+    objects = models.Manager()
 
     MODES = Choices('verified', 'honor', 'audit', 'professional', 'no-id-professional')
 
@@ -253,6 +286,12 @@ class GeneratedCertificate(models.Model):
 
         self.save()
 
+    def is_valid(self):
+        """
+        Return True if certificate is valid else return False.
+        """
+        return self.status == CertificateStatuses.downloadable
+
 
 class CertificateGenerationHistory(TimeStampedModel):
     """
@@ -268,7 +307,8 @@ class CertificateGenerationHistory(TimeStampedModel):
         """
         Return "regenerated" if record corresponds to Certificate Regeneration task, otherwise returns 'generated'
         """
-        return "regenerated" if self.is_regeneration else "generated"
+        # Translators: This is a past-tense verb that is used for task action messages.
+        return _("regenerated") if self.is_regeneration else _("generated")
 
     def get_certificate_generation_candidates(self):
         """
@@ -285,7 +325,8 @@ class CertificateGenerationHistory(TimeStampedModel):
             task_input_json = json.loads(task_input)
         except ValueError:
             # if task input is empty, it means certificates were generated for all learners
-            return "All learners"
+            # Translators: This string represents task was executed for all learners.
+            return _("All learners")
 
         # get statuses_to_regenerate from task_input convert statuses to human readable strings and return
         statuses = task_input_json.get('statuses_to_regenerate', None)
@@ -294,9 +335,10 @@ class CertificateGenerationHistory(TimeStampedModel):
                 [CertificateStatuses.readable_statuses.get(status, "") for status in statuses]
             )
 
-        # If statuses_to_regenerate is not present in task_input then, certificate generation task was run to
-        # generate certificates for white listed students
-        return "for exceptions"
+        # If students is present in task_input then, certificate generation task was run to
+        # generate certificates for white listed students otherwise it is for all students.
+        # Translators: This string represents task was executed for students having exceptions.
+        return _("For exceptions") if 'students' in task_input_json else _("All learners")
 
     class Meta(object):
         app_label = "certificates"
@@ -304,6 +346,59 @@ class CertificateGenerationHistory(TimeStampedModel):
     def __unicode__(self):
         return u"certificates %s by %s on %s for %s" % \
                ("regenerated" if self.is_regeneration else "generated", self.generated_by, self.created, self.course_id)
+
+
+class CertificateInvalidation(TimeStampedModel):
+    """
+    Model for storing Certificate Invalidation.
+    """
+    generated_certificate = models.ForeignKey(GeneratedCertificate)
+    invalidated_by = models.ForeignKey(User)
+    notes = models.TextField(default=None, null=True)
+    active = models.BooleanField(default=True)
+
+    class Meta(object):
+        app_label = "certificates"
+
+    def __unicode__(self):
+        return u"Certificate %s, invalidated by %s on %s." % \
+               (self.generated_certificate, self.invalidated_by, self.created)
+
+    def deactivate(self):
+        """
+        Deactivate certificate invalidation by setting active to False.
+        """
+        self.active = False
+        self.save()
+
+    @classmethod
+    def get_certificate_invalidations(cls, course_key, student=None):
+        """
+        Return certificate invalidations filtered based on the provided course and student (if provided),
+
+        Returned value is JSON serializable list of dicts, dict element would have the following key-value pairs.
+         1. id: certificate invalidation id (primary key)
+         2. user: username of the student to whom certificate belongs
+         3. invalidated_by: user id of the instructor/support user who invalidated the certificate
+         4. created: string containing date of invalidation in the following format "December 29, 2015"
+         5. notes: string containing notes regarding certificate invalidation.
+        """
+        certificate_invalidations = cls.objects.filter(
+            generated_certificate__course_id=course_key,
+            active=True,
+        )
+        if student:
+            certificate_invalidations = certificate_invalidations.filter(generated_certificate__user=student)
+        data = []
+        for certificate_invalidation in certificate_invalidations:
+            data.append({
+                'id': certificate_invalidation.id,
+                'user': certificate_invalidation.generated_certificate.user.username,
+                'invalidated_by': certificate_invalidation.invalidated_by.username,
+                'created': certificate_invalidation.created.strftime("%B %d, %Y"),
+                'notes': certificate_invalidation.notes,
+            })
+        return data
 
 
 @receiver(post_save, sender=GeneratedCertificate)
@@ -348,7 +443,7 @@ def certificate_status_for_student(student, course_id):
     '''
 
     try:
-        generated_certificate = GeneratedCertificate.objects.get(
+        generated_certificate = GeneratedCertificate.objects.get(  # pylint: disable=no-member
             user=student, course_id=course_id)
         cert_status = {
             'status': generated_certificate.status,
@@ -944,6 +1039,12 @@ class CertificateTemplateAsset(TimeStampedModel):
         max_length=255,
         upload_to=template_assets_path,
         help_text=_(u'Asset file. It could be an image or css file.'),
+    )
+    asset_slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        null=True,
+        help_text=_(u'Asset\'s unique slug. We can reference the asset in templates using this value.'),
     )
 
     def save(self, *args, **kwargs):
