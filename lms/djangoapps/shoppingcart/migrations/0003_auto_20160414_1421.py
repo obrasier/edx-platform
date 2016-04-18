@@ -7,18 +7,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('student', '0001_initial'),
+        ('shoppingcart', '0002_auto_20151208_1034'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='courseenrollment',
+            model_name='courseregcodeitem',
             name='mode',
-            field=models.CharField(default=b'audit', max_length=100),
+            field=models.SlugField(default=b'honor'),
         ),
         migrations.AlterField(
-            model_name='historicalcourseenrollment',
+            model_name='paidcourseregistration',
             name='mode',
-            field=models.CharField(default=b'audit', max_length=100),
+            field=models.SlugField(default=b'honor'),
         ),
     ]
