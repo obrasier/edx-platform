@@ -169,9 +169,9 @@ class @Annotatable
 
     toggleAnnotationButtonText: (hide) ->
         if hide
-            buttonText = gettext('Show Curriculum')
+            buttonText = gettext('Show Solution')
         else
-            buttonText = gettext('Hide Curriculum')
+            buttonText = gettext('Hide Solution')
         c = (if hide then ['expanded', 'collapsed'] else ['collapsed','expanded'])
         @$(@toggleAnnotationsSelector).text(buttonText).removeClass(c[0]).addClass(c[1])
 
@@ -182,9 +182,9 @@ class @Annotatable
 
     toggleInstructionsButton: (hide) ->
         if hide
-            txt = gettext('Show Solution')
+            txt = gettext('Show Curriculum')
         else
-            txt = gettext('Hide Solution')
+            txt = gettext('Hide Curriculum')
         cls = (if hide then ['expanded', 'collapsed'] else ['collapsed','expanded'])
         @$(@toggleInstructionsSelector).text(txt).removeClass(cls[0]).addClass(cls[1])
 

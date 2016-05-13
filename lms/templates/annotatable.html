@@ -13,8 +13,8 @@ from student.helpers import is_teacher_or_staff%>
       % if instructions_html is not UNDEFINED and instructions_html is not None:
       <div class="annotatable-section shaded">
           <div class="annotatable-section-title">
-              ${_("Solution")}
-              <a class="annotatable-toggle annotatable-toggle-instructions expanded" href="javascript:void(0)">${_("Hide Solution")}</a>
+              ${_("Curriculum Content Descriptors")}
+              <a class="annotatable-toggle annotatable-toggle-instructions expanded" href="javascript:void(0)">${_("Hide Curriculum")}</a>
           </div>
           <div class="annotatable-section-body annotatable-instructions">
               ${instructions_html}
@@ -24,8 +24,8 @@ from student.helpers import is_teacher_or_staff%>
 
       <div class="annotatable-section">
           <div class="annotatable-section-title">
-              ${_("Curriculum Content Descriptors")}
-              <a class="annotatable-toggle annotatable-toggle-annotations" href="javascript:void(0)">${_("Hide Curriculum")}</a>
+              ${_("Solution")}
+              <a class="annotatable-toggle annotatable-toggle-annotations" href="javascript:void(0)">${_("Hide Solution")}</a>
           </div>
           <div class="annotatable-section-body annotatable-content">
               ${content_html}
