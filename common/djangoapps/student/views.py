@@ -2496,3 +2496,4 @@ def _get_course_programs(user, user_enrolled_courses):  # pylint: disable=invali
                 log.warning('Program structure is invalid, skipping display: %r', program)
 
     return programs_data
+

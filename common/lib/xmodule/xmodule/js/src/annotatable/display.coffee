@@ -6,6 +6,7 @@ class @Annotatable
     toggleAnnotationsSelector:  '.annotatable-toggle-annotations'
     toggleInstructionsSelector: '.annotatable-toggle-instructions'
     instructionsSelector:       '.annotatable-instructions'
+    contentSelector:            '.annotatable-content'
     sectionSelector:            '.annotatable-section'
     spanSelector:               '.annotatable-span'
     replySelector:              '.annotatable-reply'
@@ -34,6 +35,8 @@ class @Annotatable
         [@annotationsHidden, @instructionsHidden] = [false, false]
         @$(@toggleAnnotationsSelector).bind 'click', @onClickToggleAnnotations
         @$(@toggleInstructionsSelector).bind 'click', @onClickToggleInstructions
+        @toggleAnnotations()
+        @toggleInstructions()
 
         # Initialize handler for 'reply to annotation' events that scroll to
         # the associated problem. The reply buttons are part of the tooltip
@@ -152,8 +155,13 @@ class @Annotatable
     toggleAnnotations: () ->
         hide = (@annotationsHidden = not @annotationsHidden)
         @toggleAnnotationButtonText hide
-        @toggleSpans hide
-        @toggleTips hide
+        #@toggleSpans hide
+        #@toggleTips hide
+        @toggleAnnotationsText hide
+
+    toggleAnnotationsText: (hide) ->
+        slideMethod = (if hide then 'slideUp' else 'slideDown')
+        @$(@contentSelector)[slideMethod]()    
 
     toggleTips: (hide) ->
         visible = @findVisibleTips()
@@ -161,10 +169,11 @@ class @Annotatable
 
     toggleAnnotationButtonText: (hide) ->
         if hide
-            buttonText = gettext('Show Annotations')
+            buttonText = gettext('Show Curriculum')
         else
-            buttonText = gettext('Hide Annotations')
-        @$(@toggleAnnotationsSelector).text(buttonText)
+            buttonText = gettext('Hide Curriculum')
+        c = (if hide then ['expanded', 'collapsed'] else ['collapsed','expanded'])
+        @$(@toggleAnnotationsSelector).text(buttonText).removeClass(c[0]).addClass(c[1])
 
     toggleInstructions: () ->
       hide = (@instructionsHidden = not @instructionsHidden)
@@ -173,9 +182,9 @@ class @Annotatable
 
     toggleInstructionsButton: (hide) ->
         if hide
-            txt = gettext('Expand Instructions')
+            txt = gettext('Show Solution')
         else
-            txt = gettext('Collapse Instructions')
+            txt = gettext('Hide Solution')
         cls = (if hide then ['expanded', 'collapsed'] else ['collapsed','expanded'])
         @$(@toggleInstructionsSelector).text(txt).removeClass(cls[0]).addClass(cls[1])
 

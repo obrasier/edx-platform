@@ -55,6 +55,7 @@ from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from student.forms import ClassSetForm
 from django.forms.models import model_to_dict
 from student.helpers import is_teacher, get_my_classes, get_class_size
+from student.models import ClassSet
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ def teacher_dashboard(request, course_id):
     if request.method == 'POST':
         class_set_form = ClassSetForm(request.POST.copy())
         if class_set_form.is_valid():
-            _new_class(class_set_form, course_key, request.user)
+            _create_new_class(class_set_form, course_key, request.user)
             class_form_dict.update( {'success': 'Class successfully added!'})
             class_set_form = ClassSetForm() # refresh to blank form
         else:
@@ -145,6 +146,7 @@ def teacher_dashboard(request, course_id):
     sections = [
         _section_course_info(course, access),
         new_class_dict
+        #_section_students(course, access, request.user)
     ]
     
     context = {
@@ -156,7 +158,33 @@ def teacher_dashboard(request, course_id):
 
     
 def _create_new_class(form, course_key, user):
-    pass
+    """ Create a new class in the database """
+    print user
+    print form.cleaned_data['short_name']
+    print form.cleaned_data['class_name']
+    print course_key
+    print form.cleaned_data['grade']
+    print form.cleaned_data['subject']
+    print form.cleaned_data['assessment']
+    print form.cleaned_data['no_of_students']
+    class_set = ClassSet(
+                    created_by=user,
+                    teacher=user,
+                    short_name=form.cleaned_data['short_name'],
+                    class_name=form.cleaned_data['class_name'],
+                    school=user.teacherprofile.school,
+                    course_id=course_key,
+                    grade=form.cleaned_data['grade'],
+                    subject=form.cleaned_data['subject'],
+                    assessment=form.cleaned_data['assessment'],
+                    no_of_students=form.cleaned_data['no_of_students'])
+    try:
+        class_set.save()
+    except Exception:
+        log.error("Error creating class set for %s"%user)
+        raise 
+
+
 
 def _section_my_classes(course, access, user):
     """ Provide data for the corresponding dashboard section """
@@ -185,6 +213,22 @@ def _section_my_classes(course, access, user):
     section_data['my_classes'] = classes_info
 
     return section_data
+
+def _section_students(course, access, user):
+    """ List the students and link to their profile page. """
+    course_key = course.id
+
+    section_data = {
+        'section_key': 'students',
+        'section_display_name': _('Students'),
+        'access': access,
+        'course_id': course_key,
+        'num_sections': len(course.children),
+    }
+
+    return section_data
+
+
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)

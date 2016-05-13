@@ -298,6 +298,12 @@ def is_teacher(user):
     except TeacherProfile.DoesNotExist:
         return False
 
+def is_teacher_or_staff(user):
+    if user.is_staff:
+        return True
+    return is_teacher(user)
+
+
 def is_teacher_of(student,user,course_key=None):
     """
     Returns boolean to whether user is a teacher of student. This does not check for CourseTeacherRole - 

@@ -483,6 +483,7 @@ class ClassSetForm(ModelForm):
                widget=forms.RadioSelect
             )
     grade = TextMultiField(choices = StudentProfile.SCHOOL_GRADES)
+    subject = forms.ChoiceField(choices= StudentProfile.SUBJECTS)
     no_of_students = forms.IntegerField(required=True, min_value=0)
     class Meta:
         model = ClassSet
@@ -492,6 +493,7 @@ class ClassSetForm(ModelForm):
             'short_name': _('Short Name'),
             'class_name':_('Class Team Name'),
             'assessment':_('Assessment'),
+            'subs':_('Subject'),
             'no_of_students': _('Number of students in class'),
         }
         help_texts = {
@@ -515,7 +517,7 @@ class ClassSetForm(ModelForm):
         widgets = {
             'short_name': forms.TextInput(attrs = {'placeholder': 'e.g. Yr09LineB'}),
             'class_name': forms.TextInput(attrs = {'placeholder': 'e.g. The Mighty Ducks'}),
-            'subject': forms.Select(),
+            'subject': forms.Select(choices=StudentProfile.SUBJECTS),
         }
 
 class OtherSubjectForm(ModelForm):

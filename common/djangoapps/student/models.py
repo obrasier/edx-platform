@@ -2137,6 +2137,14 @@ class StudentProfile(models.Model):
         blank = True,
     )
     
+    SUBJECTS = (
+        ('S','Science'),
+        ('M','Maths'),
+        ('I','ICT/TAS'),
+        ('C','Club'),
+        ('O','Other'),
+    )
+
     #aboriginal or torres strait islander
     indigenous = models.BooleanField(
         default=False,
@@ -2400,6 +2408,7 @@ class RandomPrimaryIdModel(models.Model):
         in the base-class list.
         """
         if self.class_code:
+            print self.class_code, len(self.class_code)
             # Apparently, we know our ID already, so we don't have to
             # do anything special here.
             super(RandomPrimaryIdModel, self).save(*args, **kwargs)
@@ -2487,15 +2496,15 @@ class ClassSet(RandomPrimaryIdModel):
     
     course_id = CourseKeyField(db_index=True, max_length=255, blank=True) 
     grade = models.CharField(max_length=12,null=True)
-    subject = models.ManyToManyField('Subject',blank=True)
+    subject = models.CharField(max_length=12,null=True)
     assessment = models.BooleanField(default=False)     #for survey purposes
     no_of_students = models.IntegerField(null=True)
     
     def __unicode__(self):              # __str__ on Python 3
         return self.short_name
 
-    def size(self, is_active=None):
-        if is_active == None:
+    def size(self, is_active=False):
+        if is_active == False:
             return self.studentprofile_set.count()
         else:
             return self.studentprofile_set.filter(user__is_active=is_active).count()
@@ -2503,8 +2512,8 @@ class ClassSet(RandomPrimaryIdModel):
     
     def save(self, *args, **kwargs):
         # verify that teacher's expected class size >= number of active enrolments
-        if self.no_of_students < self.size(True):
-            self.no_of_students = self.size(True)
+        #if self.no_of_students < self.size(True):
+        #    self.no_of_students = self.size(True)
         try:
             self.school
         except School.DoesNotExist: 
