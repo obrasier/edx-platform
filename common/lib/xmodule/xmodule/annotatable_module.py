@@ -22,6 +22,7 @@ class AnnotatableFields(object):
         default=textwrap.dedent("""
         <annotatable>
             <instructions>
+                <p>Enter the solution here. It doesn't support HTML yet, working on it.</p>
                 <p>Enter your (optional) instructions for the exercise in HTML format.</p>
                 <p>Annotations are specified by an <code>&lt;annotation&gt;</code> tag which may may have the following attributes:</p>
                 <ul class="instructions-template">
