@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 from django.core.exceptions import ImproperlyConfigured, NON_FIELD_ERRORS, ValidationError
 from django.utils.translation import ugettext as _
+from django.utils.safestring import mark_safe
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect, csrf_exempt
 from opaque_keys.edx import locator
@@ -930,7 +931,7 @@ class RegistrationView(APIView):
             error_messages={
                 },
             reg_type=2,
-            instructions=_("Lookup your school by name, suburb or postcode")
+            instructions=mark_safe("Lookup your school by name, suburb or postcode. <a href='mailto:info@madmaker.com.au'>Email us</a> if your school or institution is not listed.")
         )
     
     def _add_school_id_field(self, form_desc, required=False):
