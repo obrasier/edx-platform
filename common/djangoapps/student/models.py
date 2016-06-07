@@ -2367,7 +2367,9 @@ class RandomPrimaryIdModel(models.Model):
         _firstname_clean = ''
         if len(_lastname_clean[:4])<4:
             _firstname_clean = ''.join([x for x in self.teacher.first_name])[:(len(_lastname_clean[:4])-4)]
-        return (_firstname_clean+_lastname_clean).upper()
+            return (_firstname_clean+_lastname_clean).upper()
+        else:
+            return _firstname_clean[:4].upper()
 
     #KEYPREFIX         = ""
     KEYSUFFIX         = ""
@@ -2407,6 +2409,7 @@ class RandomPrimaryIdModel(models.Model):
         Calls the save() method of the first model.Models base class it can find
         in the base-class list.
         """
+	print self.class_code, "created.\n"
         if self.class_code:
             print self.class_code, len(self.class_code)
             # Apparently, we know our ID already, so we don't have to

@@ -1,6 +1,9 @@
 <%! from django.utils.translation import ugettext as _ %>
 <%page args="section_data"/>
 <div class="teacher-dashboard-class-view">
+    % if len(section_data["my_classes"])<1:
+        <div class="empty-data">You have no classes.</div>
+    % endif
     <ul>
     % for c in section_data["my_classes"]:
     <li>

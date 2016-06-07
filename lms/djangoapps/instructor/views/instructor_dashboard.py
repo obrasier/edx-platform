@@ -159,14 +159,14 @@ def teacher_dashboard(request, course_id):
     
 def _create_new_class(form, course_key, user):
     """ Create a new class in the database """
-    print user
-    print form.cleaned_data['short_name']
-    print form.cleaned_data['class_name']
-    print course_key
-    print form.cleaned_data['grade']
-    print form.cleaned_data['subject']
-    print form.cleaned_data['assessment']
-    print form.cleaned_data['no_of_students']
+    #print user
+    #print form.cleaned_data['short_name']
+    #print form.cleaned_data['class_name']
+    #print course_key
+    #print form.cleaned_data['grade']
+    #print form.cleaned_data['subject']
+    #print form.cleaned_data['assessment']
+    #print form.cleaned_data['no_of_students']
     class_set = ClassSet(
                     created_by=user,
                     teacher=user,
