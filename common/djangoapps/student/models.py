@@ -2363,20 +2363,17 @@ class RandomPrimaryIdModel(models.Model):
     """
     
     def _get_prefix(self):
-        _lastname_clean = ''.join([x for x in self.teacher.last_name if x.isalpha()])
-        _firstname_clean = ''
-        if len(_lastname_clean[:4])<4:
-            _firstname_clean = ''.join([x for x in self.teacher.first_name])[:(len(_lastname_clean[:4])-4)]
-            return (_firstname_clean+_lastname_clean).upper()
-        else:
-            return _firstname_clean[:4].upper()
+        _lastname_clean = ''.join([x for x in self.teacher.last_name if x.isalpha()])[:3]
+        # find length of last name and use that to find the remainder of the first name
+        diff = 4-len(_lastname_clean)
+        _firstname_clean = ''.join([x for x in self.teacher.first_name if x.isalpha()])[:diff]
+        return (_firstname_clean+_lastname_clean).upper()
 
-    #KEYPREFIX         = ""
-    KEYSUFFIX         = ""
+    KEYSUFFIX = ""
     CRYPT_KEY_LEN_MIN = 4
     CRYPT_KEY_LEN_MAX = 4
-    _FIRSTIDCHAR      = string.digits #string.ascii_uppercase                 # First char: Always a letter
-    _IDCHARS          = string.digits #+ string.ascii_uppercase  # Letters and digits for the rest
+    _FIRSTIDCHAR  = string.digits #string.ascii_uppercase                 # First char: Always a letter
+    _IDCHARS = string.digits #+ string.ascii_uppercase  # Letters and digits for the rest
 
     """ Our new ID field """
     class_code = models.CharField(db_index    = True,

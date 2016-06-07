@@ -145,8 +145,8 @@ def teacher_dashboard(request, course_id):
     
     sections = [
         _section_course_info(course, access),
-        new_class_dict
-        #_section_students(course, access, request.user)
+        new_class_dict,
+        #_section_my_students(course, access, request.user)
     ]
     
     context = {
@@ -159,14 +159,6 @@ def teacher_dashboard(request, course_id):
     
 def _create_new_class(form, course_key, user):
     """ Create a new class in the database """
-    #print user
-    #print form.cleaned_data['short_name']
-    #print form.cleaned_data['class_name']
-    #print course_key
-    #print form.cleaned_data['grade']
-    #print form.cleaned_data['subject']
-    #print form.cleaned_data['assessment']
-    #print form.cleaned_data['no_of_students']
     class_set = ClassSet(
                     created_by=user,
                     teacher=user,
@@ -184,7 +176,18 @@ def _create_new_class(form, course_key, user):
         log.error("Error creating class set for %s"%user)
         raise 
 
-
+def _section_my_students(course,access, user):
+    course_key = course.id
+    
+    section_data = {
+        'section_key': 'my_students',
+        'section_display_name':_('My Students'),
+        'access': access,
+        'course_id': course_key,
+        'num_sections': len(course.children),        
+        'update_forum_role_membership_url': reverse('update_forum_role_membership', kwargs={'course_id': unicode(course_key)}),
+    }
+    return section_data
 
 def _section_my_classes(course, access, user):
     """ Provide data for the corresponding dashboard section """
