@@ -13,6 +13,8 @@ urlpatterns = patterns(
         'instructor.views.api.register_and_enroll_students', name="register_and_enroll_students"),
     url(r'^list_course_role_members$',
         'instructor.views.api.list_course_role_members', name="list_course_role_members"),
+    url(r'^list_students_of_class_code$',
+        'instructor.views.api.list_students_of_class_code', name="list_students_of_class_code"),#MM NEW
     url(r'^modify_access$',
         'instructor.views.api.modify_access', name="modify_access"),
     url(r'^bulk_beta_modify_access$',

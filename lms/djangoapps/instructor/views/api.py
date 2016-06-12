@@ -228,7 +228,7 @@ def require_level(level):
     if `level` is 'staff', instructors will also be allowed, even
         if they are not in the staff group.
     """
-    if level not in ['instructor', 'staff']:
+    if level not in ['instructor', 'staff','teacher']: #MM New
         raise ValueError("unrecognized level '{}'".format(level))
 
     def decorator(func):  # pylint: disable=missing-docstring
@@ -934,6 +934,72 @@ def modify_access(request, course_id):
         'rolename': rolename,
         'action': action,
         'success': 'yes',
+    }
+    return JsonResponse(response_payload)
+
+# MM NEW
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('teacher')
+#@require_query_params(rolename="'class code'")
+def list_students_of_class_code(request, course_id):
+    """
+    List students of a given class_code belonging to the user's teacher role
+    Requires teacher access.
+
+    rolename is ['teacher']
+
+    Returns JSON of the form {
+        "course_id": "some/course/id",
+        "students": [
+            {
+                "username": "student1",
+                "email": "student@example.org",
+                "first_name": "Joe",
+                "last_name": "Shmoe",
+		"status": "active",
+		"unique_id": 2,
+            }
+        ]
+    }
+    """
+    # if user is not teacher 
+        # then bad request/permission denied
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    # qualify user has teacher's access for access (this will implicitly raise a 404 error if not)
+    course = get_course_with_access(
+        request.user, 'teacher', course_id, depth=None
+    )
+
+        
+    # if class code does not exist
+        # then bad request/permission denied (can't assert it doesn't exist)
+    
+    class_code = request.GET.get('class_code')
+    try:
+        class_set = ClassSet.objects.get(class_code=class_code)
+    except ClassSet.DoesNotExist:
+        return HttpResponseBadRequest()
+
+    # if teacher is not teacher of class_code
+        #then bad request/permission denied
+    if request.user != class_set.teacher:
+        raise ValueError('Not teacher of class')
+    
+    def extract_user_info(user):
+        """ convert user into dicts for json view """
+        return {
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'status': user.is_active,
+            'unique_id': user.pk,
+        }
+
+    response_payload = {
+        'course_id': course_id.to_deprecated_string(),
+        rolename: map(extract_user_info, get_users_by_class_set(class_set)),
     }
     return JsonResponse(response_payload)
 
@@ -2565,6 +2631,54 @@ def update_forum_role_membership(request, course_id):
         'action': action,
     }
     return JsonResponse(response_payload)
+
+#@common_exceptions_400
+#def update_student_class_membership(request, course_id):
+#    """
+#    Teacher Dashboard: Modify student by acting Teacher user.
+#
+#    The requesting user must be a teacher with TeacherCourseRole.
+#
+#    Query parameters:
+#    - `email` is the target users email
+#    - `rolename` is one of [FORUM_ROLE_ADMINISTRATOR, FORUM_ROLE_MODERATOR, FORUM_ROLE_COMMUNITY_TA]
+#    - `action` is one of ['allow', 'revoke']
+#    """
+#    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+#    course = get_course_by_id(course_id)
+#    has_teacher_access = has_access(request.user, 'teacher', course)
+#
+#    unique_student_identifier = request.GET.get('unique_student_identifier')
+#    class_code = request.GET.get('class_code')
+#    action = request.GET.get('action')
+#
+#    # default roles require either (staff & forum admin) or (instructor)
+#    if not (has_forum_admin or has_teacher_access):
+#        return HttpResponseBadRequest(
+#            "Operation requires teacher access"
+#        )
+#
+#    # EXCEPT FORUM_ROLE_ADMINISTRATOR requires (instructor)
+#    if rolename == FORUM_ROLE_ADMINISTRATOR and not has_instructor_access:
+#        return HttpResponseBadRequest("Operation requires instructor access.")
+#
+#    if rolename not in [FORUM_ROLE_ADMINISTRATOR, FORUM_ROLE_MODERATOR, FORUM_ROLE_COMMUNITY_TA]:
+#        return HttpResponseBadRequest(strip_tags(
+#            "Unrecognized rolename '{}'.".format(rolename)
+#        ))
+#
+#    user = get_student_from_identifier(unique_student_identifier)
+#
+#    try:
+#        update_forum_role(course_id, user, rolename, action)
+#    except Role.DoesNotExist:
+#        return HttpResponseBadRequest("Role does not exist.")
+#
+#    response_payload = {
+#        'course_id': course_id.to_deprecated_string(),
+#        'action': action,
+#    }
+#    return JsonResponse(response_payload)
 
 
 @require_POST
