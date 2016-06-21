@@ -316,7 +316,7 @@ def is_teacher_of(student,user,course_key=None):
     except StudentProfile.DoesNotExist:
         return False
     
-    if course_id:
+    if course_key:
         student_classes =  sp.classSet.filter(course_id=course_key)
     else:
         student_classes = sp.classSet.all()
