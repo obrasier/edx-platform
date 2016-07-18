@@ -2099,6 +2099,16 @@ def activate_account(request, key):
                             manual_enrollment_audit.reason, enrollment
                         )
 
+        #MM NEW: if student is enrolled with a class code, then enrol in the class code's course
+        try:
+            #for now, we'll assume there'll only be one class_code during this activation
+            sp = student[0].studentprofile
+            c = sp.classSet.all()
+            if c: #if there is a class_code, add
+                enrollment = CourseEnrollment.enroll(student[0],c[0].course_id)
+        except StudentProfile.DoesNotExist:
+            pass
+
         resp = render_to_response(
             "registration/activation_complete.html",
             {

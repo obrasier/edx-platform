@@ -165,143 +165,28 @@ from openedx.core.djangoapps.course_groups.partition_scheme import get_cohorted_
     ## Translators: an "Administrator Group" is a group, such as Course Staff, that users can be added to.
     <label for="member-lists-selector">${_("Select a course team role:")}</label>
     <select id="member-lists-selector" class="member-lists-selector">
-      <option> ${_("Getting available lists...")} </option>
+        %if len(section_data['class_code_list']) > 0:
+            % for c in section_data['class_code_list']:
+                <option value="${c['class_code']}">$c['class_code']}: ${c['short_name']}</option>
+            %endfor
+        %else:
+            <option> ${_("No classes available")} </option>
+        %endif
     </select>
 
   </div>
 
-    <div class="auth-list-container"
-      data-rolename="staff"
-      data-display-name="${_("Staff")}"
-      data-info-text="
-        ${_("Course team members with the Staff role help you manage your course. "
-        "Staff can enroll and unenroll learners, as well as modify their grades and "
-        "access all course data. Staff also have access to your course in Studio and "
-        "Insights. You can only give course team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_students_of_class_code_url'] }"
-      data-modify-endpoint="${ section_data['modify_access_url'] }"
-      data-add-button-label="${_("Add Student")}"
-    ></div>
+  %if section_data['access']['teacher']:
+    <p>I am a teacher, and therefore:</p>  
 
-  %if not section_data['access']['instructor']:
-    <p>
-      ${_("Staff cannot modify these lists. To manage course team membership, "
-      "a course Admin must give you the Admin role to add Staff or Beta Testers, "
-      "or the Discussion Admin role to add discussion moderators and TAs.")}
-    </p>
+  %for c in section_data['class_code_list']:
+    <div class="auth-list-container"
+        data-rolename="${c['class_code']}"
+        data-display-name="${c['class_code']}: ${c['class_name']}"
+        data-list-endpoint="${section_data['list_students_of_class_code_url']}"
+        data-modify-endpoint="${section_data['modify_students_of_class_code_url']}"
+        data-add-button-label="${_("Invite Student to Class")}"></div>
+  %endfor  
   %endif
 
-  %if section_data['access']['instructor']:
-    <div class="auth-list-container"
-      data-class_code="class_code"
-      data-display-name="${_("Class 1")}"
-      data-info-text="
-        ${_("Course team members with the Staff role help you manage your course. "
-        "Staff can enroll and unenroll learners, as well as modify their grades and "
-        "access all course data. Staff also have access to your course in Studio and "
-        "Insights. You can only give course team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_course_role_members_url'] }"
-      data-modify-endpoint="${ section_data['modify_access_url'] }"
-      data-add-button-label="${_("Add Staff")}"
-    ></div>
 
-    ## Note that "Admin" is identified as "Instructor" in the Django admin panel.
-    <div class="auth-list-container"
-      data-rolename="instructor"
-      data-display-name="${_("Admin")}"
-      data-info-text="
-        ${_("Course team members with the Admin role help you manage your course. "
-          "They can do all of the tasks that Staff can do, and can also add and "
-          "remove the Staff and Admin roles, discussion moderation roles, and the "
-          "beta tester role to manage course team membership. You can only give "
-          "course team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_course_role_members_url'] }"
-      data-modify-endpoint="${ section_data['modify_access_url'] }"
-      data-add-button-label="${_("Add Admin")}"
-    >
-    </div>
-    
-    <div class="auth-list-container"
-      data-rolename="teacher"
-      data-display-name="${_("Teacher")}"
-      data-info-text="
-        ${_("Course team members with the Teacher role get access to their teacher dashboard. "
-          "They need a teacher profile for the teacher dashboard to render completely. "
-          )}"
-      data-list-endpoint="${ section_data['list_course_role_members_url'] }"
-      data-modify-endpoint="${ section_data['modify_access_url'] }"
-      data-add-button-label="${_("Add Teacher")}"
-    >
-    </div>
-
-    <div class="auth-list-container"
-      data-rolename="beta"
-      data-display-name="${_("Beta Testers")}"
-      data-info-text="
-        ${_("Beta Testers can see course content before other learners. "
-        "They can make sure that the content works, but have no additional "
-        "privileges. You can only give course team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_course_role_members_url'] }"
-      data-modify-endpoint="${ section_data['modify_access_url'] }"
-      data-add-button-label="${_("Add Beta Tester")}"
-    ></div>
-
-    <div class="auth-list-container"
-      data-rolename="Administrator"
-      data-display-name="${_("Discussion Admins")}"
-      data-info-text="
-        ${_("Discussion Admins can edit or delete any post, clear misuse flags, close "
-         "and re-open threads, endorse responses, and see posts from all cohorts. "
-         "Their posts are marked as 'staff'. They can also add and remove the "
-         "discussion moderation roles to manage course team membership. You can "
-         "only give course team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_forum_members_url'] }"
-      data-modify-endpoint="${ section_data['update_forum_role_membership_url'] }"
-      data-add-button-label="${_("Add Discussion Admin")}"
-    ></div>
-  %endif
-
-  %if section_data['access']['instructor'] or section_data['access']['forum_admin']:
-    <div class="auth-list-container"
-      data-rolename="Moderator"
-      data-display-name="${_("Discussion Moderators")}"
-      data-info-text="
-        ${_("Discussion Moderators can edit or delete any post, clear misuse flags, close "
-         "and re-open threads, endorse responses, and see posts from all cohorts. "
-         "Their posts are marked as 'staff'. They cannot manage course team membership by "
-         "adding or removing discussion moderation roles. You can only give course team "
-         "roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_forum_members_url'] }"
-      data-modify-endpoint="${ section_data['update_forum_role_membership_url'] }"
-      data-add-button-label="${_("Add Moderator")}"
-    ></div>
-
-    <div class="auth-list-container"
-      data-rolename="Community TA"
-      data-display-name="${_("Discussion Community TAs")}"
-      data-info-text="
-        ${_("Community TA's are members of the community whom you deem particularly "
-        "helpful on the discussion boards. They can edit or delete any post, clear "
-        "misuse flags, close and re-open threads, endorse responses, and see posts from "
-        "all cohorts. Their posts are marked as 'Community TA'. You can only give course "
-        "team roles to enrolled users.")}"
-      data-list-endpoint="${ section_data['list_forum_members_url'] }"
-      data-modify-endpoint="${ section_data['update_forum_role_membership_url'] }"
-      data-add-button-label="${_("Add Community TA")}"
-    ></div>
-  %endif
-
-  %if section_data['access']['instructor'] and section_data['ccx_is_enabled']:
-    <div class="auth-list-container"
-      data-rolename="ccx_coach"
-      data-display-name="${_("CCX Coaches")}"
-      data-info-text="
-        ${_("CCX Coaches are able to create their own Custom Courses "
-            "based on this course, which they can use to provide personalized "
-            "instruction to their own students based in this course material.")}"
-      data-list-endpoint="${section_data['list_course_role_members_url']}"
-      data-modify-endpoint="${section_data['modify_access_url']}"
-      data-add-button-label="${_("Add CCX Coach")}"
-    ></div>
-  %endif
-</div>

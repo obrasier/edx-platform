@@ -64,7 +64,7 @@ from student.models import (
     UserProfile, Registration, EntranceExamConfiguration,
     ManualEnrollmentAudit, UNENROLLED_TO_ALLOWEDTOENROLL, ALLOWEDTOENROLL_TO_ENROLLED,
     ENROLLED_TO_ENROLLED, ENROLLED_TO_UNENROLLED, UNENROLLED_TO_ENROLLED,
-    UNENROLLED_TO_UNENROLLED, ALLOWEDTOENROLL_TO_UNENROLLED, DEFAULT_TRANSITION_STATE
+    UNENROLLED_TO_UNENROLLED, ALLOWEDTOENROLL_TO_UNENROLLED, DEFAULT_TRANSITION_STATE, ClassSet
 )
 import instructor_task.api
 from instructor_task.api_helper import AlreadyRunningError
@@ -78,7 +78,7 @@ from instructor.enrollment import (
     send_beta_role_email,
     unenroll_email,
 )
-from instructor.access import list_with_level, allow_access, revoke_access, ROLES, update_forum_role
+from instructor.access import list_with_level, allow_access, revoke_access, ROLES, update_forum_role, revoke_student_from_class_set
 import instructor_analytics.basic
 import instructor_analytics.distributions
 import instructor_analytics.csvs
@@ -111,7 +111,7 @@ from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
 from student.helpers import is_teacher
-
+from instructor.utils import get_users_by_class_set
 log = logging.getLogger(__name__)
 
 
@@ -938,6 +938,131 @@ def modify_access(request, course_id):
     return JsonResponse(response_payload)
 
 # MM NEW
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('teacher')
+def modify_students_of_class_code(request, course_id):
+    """
+    Checks modify action before continuing. Requires teach access.
+    """
+
+    response_payload={}
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    class_code = request.GET.get('rolename')
+    action = request.GET.get('action')
+    identifier = request.GET.get('unique_student_identifier')
+    try:
+        class_set = ClassSet.objects.get(class_code=class_code)
+    except ClassSet.DoesNotExist:
+        return HttpResponseBadRequest()
+    
+    course = get_course_with_access(
+        request.user, 'teacher', course_id, depth=None
+    )
+    
+    # if teacher is not teacher of class_code
+        #then bad request/permission denied
+    if request.user != class_set.teacher:
+        raise ValueError('Not teacher of class')
+
+    # Validate identifier input
+    try:
+        student = get_student_from_identifier(identifier)
+    except User.DoesNotExist:
+        if action == 'allow':
+            #need to validate for email and send e-mail invitation
+            response_payload = _invite_with_class_code(class_code,identifier,request.user,course_id,request)
+            return JsonResponse(response_payload)
+        elif action == 'revoke':
+            response_payload = {
+                'unique_student_identifier': request.GET.get('unique_student_identifier'),
+                'userDoesNotExist': True,
+            }
+            return JsonResponse(response_payload)
+
+        else:
+            return HttpResponseBadRequest(strip_tags(
+                "unrecognized action '{}'".format(action)
+            ))
+        
+   
+    if action == 'allow':
+    #   for now allow only sends an e-mail invitation with an invite to use the class_code in the registration.
+    #   TODO: render class_code with registration fields (and lock field on form).        
+        success = add_student_to_class_set(class_set,student)
+        if not success:
+            response_payload['userHasNoStudentProfile'] = True
+                       
+    elif action == 'revoke':
+        revoke_student_from_class_set(class_set, student)
+        success = True
+    else:
+        return HttpResponseBadRequest(strip_tags(
+            "unrecognized action '{}'".format(action)
+        ))
+
+    response_payload.update({
+        'unique_student_identifier': student.username,
+        'rolename': class_code,
+        'action': action,
+        'success': success,
+    })
+    return JsonResponse(response_payload)
+
+def add_student_to_class_set(class_set,student):
+    """
+    returns true if successfully added. Returns false if user does not have a student profile.
+    """
+    try:
+        class_set.studentprofile_set.add(student.studentprofile)
+        return True
+    except StudentProfile.DoesNotExist:
+        return False
+
+def _invite_with_class_code(class_code,identifier,user,course_id,request):
+    auto_enroll = True
+    email_students =  True
+    is_white_label = CourseMode.is_white_label(course_id)
+    enrollment_obj = None
+    #state_transition = DEFAULT_TRANSITION_STATE
+    #email_params = {}
+    course = get_course_by_id(course_id)
+    email_params = get_email_params(course, auto_enroll, secure=request.is_secure())
+
+    # First try to get a user object from the identifer
+    email = identifier
+    try:
+        # Use django.core.validators.validate_email to check email address
+        # validity (obviously, cannot check if email actually /exists/,
+        # simply that it is plausibly valid)
+        validate_email(email)  # Raises ValidationError if invalid
+        email_params['message']='classcode_enroll'
+        email_params['class_code']=class_code
+        email_params['teacher_name'] = "{initial} {surname}".format(initial = user.first_name[0], surname=user.last_name)
+        email_params['email_address'] = identifier
+        success = send_mail_to_student(email,param_dict=email_params,language=None)
+    except ValidationError:
+        # Flag this email as an error if invalid, but continue checking
+        # the remaining in the list
+        success = False
+    except Exception as exc:  # pylint: disable=broad-except
+        # catch and log any exceptions
+        # so that one error doesn't cause a 500.
+        log.exception(u"Error while #{}ing student")
+        log.exception(exc)
+        success = False
+ 
+    response_payload = {
+        'unique_student_identifier': identifier,
+        'rolename': class_code,
+        'action': 'allow',
+        'success': success,
+    }
+    
+    return response_payload
+
+# MM NEW
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('teacher')
@@ -975,7 +1100,7 @@ def list_students_of_class_code(request, course_id):
     # if class code does not exist
         # then bad request/permission denied (can't assert it doesn't exist)
     
-    class_code = request.GET.get('class_code')
+    class_code = request.GET.get('rolename')
     try:
         class_set = ClassSet.objects.get(class_code=class_code)
     except ClassSet.DoesNotExist:
@@ -999,7 +1124,7 @@ def list_students_of_class_code(request, course_id):
 
     response_payload = {
         'course_id': course_id.to_deprecated_string(),
-        rolename: map(extract_user_info, get_users_by_class_set(class_set)),
+        class_code: map(extract_user_info, get_users_by_class_set(class_set)),
     }
     return JsonResponse(response_payload)
 

@@ -1,17 +1,17 @@
 ###
-Instructor Dashboard Tab Manager
+Teacher Dashboard Tab Manager
 
-The instructor dashboard is broken into sections.
+The teacher dashboard is broken into sections.
 
 Only one section is visible at a time,
   and is responsible for its own functionality.
 
 NOTE: plantTimeout (which is just setTimeout from util.coffee)
-      is used frequently in the instructor dashboard to isolate
+      is used frequently in the teacher dashboard to isolate
       failures. If one piece of code under a plantTimeout fails
       then it will not crash the rest of the dashboard.
 
-NOTE: The instructor dashboard currently does not
+NOTE: The teacher dashboard currently does not
       use backbone. Just lots of jquery. This should be fixed.
 
 NOTE: Server endpoints in the dashboard are stored in
@@ -26,8 +26,8 @@ wrap in (-> ... apply) to defer evaluation
 such that the value can be defined later than this assignment (file load order).
 ###
 
-plantTimeout = -> window.InstructorDashboard.util.plantTimeout.apply this, arguments
-std_ajax_err = -> window.InstructorDashboard.util.std_ajax_err.apply this, arguments
+plantTimeout = -> window.TeacherDashboard.util.plantTimeout.apply this, arguments
+std_ajax_err = -> window.TeacherDashboard.util.std_ajax_err.apply this, arguments
 
 # CSS classes
 CSS_INSTRUCTOR_CONTENT = 'instructor-dashboard-content-2'
@@ -150,40 +150,37 @@ setup_instructor_dashboard = (idash_content) =>
 # enable sections
 setup_instructor_dashboard_sections = (idash_content) ->
   sections_to_initialize = [
-    constructor: window.InstructorDashboard.sections.CourseInfo
+    constructor: window.TeacherDashboard.sections.CourseInfo
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#course_info"
   ,
-    constructor: window.InstructorDashboard.sections.DataDownload
+    constructor: window.TeacherDashboard.sections.DataDownload
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#data_download"
   ,
-    constructor: window.InstructorDashboard.sections.ECommerce
+    constructor: window.TeacherDashboard.sections.ECommerce
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#e-commerce"
   ,
-    constructor: window.InstructorDashboard.sections.Membership
-    $element: idash_content.find ".#{CSS_IDASH_SECTION}#membership"
-  , #MM New
-#    constructor: window.InstructorDashboard.sections.Student
-#    $element: idash_content.find ".#{CSS_DASH_SECTION}#student"
-#  ,
-    constructor: window.InstructorDashboard.sections.StudentAdmin
+    constructor: window.TeacherDashboard.sections.MyStudents
+    $element: idash_content.find ".#{CSS_IDASH_SECTION}#my_students"
+  ,
+    constructor: window.TeacherDashboard.sections.StudentAdmin
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#student_admin"
   ,
-    constructor: window.InstructorDashboard.sections.Extensions
+    constructor: window.TeacherDashboard.sections.Extensions
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#extensions"
   ,
-    constructor: window.InstructorDashboard.sections.Email
+    constructor: window.TeacherDashboard.sections.Email
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#send_email"
   ,
-    constructor: window.InstructorDashboard.sections.InstructorAnalytics
+    constructor: window.TeacherDashboard.sections.InstructorAnalytics
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#instructor_analytics"
   ,
-    constructor: window.InstructorDashboard.sections.Metrics
+    constructor: window.TeacherDashboard.sections.Metrics
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#metrics"
   ,
-    constructor: window.InstructorDashboard.sections.CohortManagement
+    constructor: window.TeacherDashboard.sections.CohortManagement
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#cohort_management"
   ,
-    constructor: window.InstructorDashboard.sections.Certificates
+    constructor: window.TeacherDashboard.sections.Certificates
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#certificates"
   ]
   # proctoring can be feature disabled

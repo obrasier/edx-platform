@@ -396,6 +396,10 @@ def send_mail_to_student(student, param_dict, language=None):
             'emails/enroll_email_enrolledsubject.txt',
             'emails/account_creation_and_enroll_emailMessage.txt'
         ),
+        'classcode_enroll': (
+            'emails/enroll_email_classcode_subject.txt',
+            'emails/enroll_email_classcode_message.txt'
+        ),
     }
 
     subject_template, message_template = email_template_dict.get(message_type, (None, None))

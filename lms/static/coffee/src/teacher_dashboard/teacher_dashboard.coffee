@@ -1,5 +1,5 @@
 ###
-Instructor Dashboard Tab Manager
+Teacher Dashboard Tab Manager -- copied from Instructor Dashboard Tab Manager
 
 The instructor dashboard is broken into sections.
 
@@ -162,9 +162,9 @@ setup_instructor_dashboard_sections = (idash_content) ->
     constructor: window.InstructorDashboard.sections.Membership
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#membership"
   , #MM New
-#    constructor: window.InstructorDashboard.sections.Student
-#    $element: idash_content.find ".#{CSS_DASH_SECTION}#student"
-#  ,
+  #  constructor: window.InstructorDashboard.sections.Student
+  #  $element: idash_content.find ".#{CSS_DASH_SECTION}#student"
+  #,
     constructor: window.InstructorDashboard.sections.StudentAdmin
     $element: idash_content.find ".#{CSS_IDASH_SECTION}#student_admin"
   ,

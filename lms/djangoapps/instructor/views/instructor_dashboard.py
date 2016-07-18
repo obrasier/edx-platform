@@ -148,7 +148,8 @@ def teacher_dashboard(request, course_id):
     sections = [
         _section_course_info(course, access),
         new_class_dict,
-        _section_my_students(course, access, request.user)
+        _section_my_students(course, access, is_white_label, request.user),
+        #_section_membership(course, access, is_white_label),
     ]
     
     context = {
@@ -178,7 +179,7 @@ def _create_new_class(form, course_key, user):
         log.error("Error creating class set for %s"%user)
         raise 
 
-def _section_my_students(course,access, user):
+def _section_my_students_old(course,access, is_white_label,user):
     course_key = course.id
     section_data = {
    }
@@ -188,7 +189,8 @@ def _section_my_students(course,access, user):
         'access': access,
         'course_id': course_key,
         'ccx_is_enabled': False,
-        'num_sections': len(course.children),        
+        'num_sections': len(course.children),
+        'is_white_label': is_white_label,        
         'list_students_of_class_code_url': reverse('list_students_of_class_code',kwargs={'course_id': unicode(course_key)}),
 	'list_course_role_members_url': reverse('list_course_role_members', kwargs={'course_id': unicode(course_key)}),
 	'update_forum_role_membership_url': reverse('update_forum_role_membership', kwargs={'course_id': unicode(course_key)}),
@@ -206,6 +208,7 @@ def _section_my_students(course,access, user):
     return section_data
 
 
+# MM NEW: Inherited from membership and modified to return user specific fields.
 def _section_my_classes(course, access, user):
     """ Provide data for the corresponding dashboard section """
     course_key = course.id
@@ -570,6 +573,31 @@ def set_course_mode_price(request, course_id):
         currency=currency
     )
     return JsonResponse({'message': _("CourseMode price updated successfully")})
+
+def _section_my_students(course, access, is_white_label, user):
+    """ Provide data for the corresponding dashboard section """
+    course_key = course.id
+    ccx_enabled = settings.FEATURES.get('CUSTOM_COURSES_EDX', False) and course.enable_ccx
+    section_data = {
+        'section_key': 'membership',
+        'section_display_name': _('My Students'),
+        'access': access,
+        'ccx_is_enabled': ccx_enabled,
+        'class_code_list': get_class_codes_of_teacher(user,course_key),
+        'is_white_label': is_white_label,
+        'list_students_of_class_code_url': reverse('list_students_of_class_code',kwargs={'course_id': unicode(course_key)}),
+        'modify_students_of_class_code_url': reverse('modify_students_of_class_code',kwargs={'course_id': unicode(course_key)}),#TODO: ADD URLS IN
+        'enroll_button_url': reverse('students_update_enrollment', kwargs={'course_id': unicode(course_key)}),
+        'unenroll_button_url': reverse('students_update_enrollment', kwargs={'course_id': unicode(course_key)}),
+        'upload_student_csv_button_url': reverse('register_and_enroll_students', kwargs={'course_id': unicode(course_key)}),
+        'modify_beta_testers_button_url': reverse('bulk_beta_modify_access', kwargs={'course_id': unicode(course_key)}),
+        'list_course_role_members_url': reverse('list_course_role_members', kwargs={'course_id': unicode(course_key)}),
+        'modify_access_url': reverse('modify_access', kwargs={'course_id': unicode(course_key)}),
+        'list_forum_members_url': reverse('list_forum_members', kwargs={'course_id': unicode(course_key)}),
+        'update_forum_role_membership_url': reverse('update_forum_role_membership', kwargs={'course_id': unicode(course_key)}),
+    }
+    return section_data
+
 
 
 def _section_course_info(course, access):

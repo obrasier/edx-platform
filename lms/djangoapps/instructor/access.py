@@ -54,6 +54,10 @@ def allow_access(course, user, level, send_email=True):
     """
     _change_access(course, user, level, 'allow', send_email)
 
+# MM NEW:
+def revoke_student_from_class_set(class_set, user):
+    class_set.studentprofile_set.remove(user.studentprofile)
+    log.info("Removed {user} from {class_code}".format(user=user.username,class_code=class_set.class_code))
 
 def revoke_access(course, user, level, send_email=True):
     """

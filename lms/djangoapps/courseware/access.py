@@ -322,6 +322,7 @@ def _has_access_course(user, action, courselike):
     'enroll' -- enroll.  Checks for enrollment window.
     'see_exists' -- can see that the course exists.
     'staff' -- staff access to course.
+    'teacher' -- is a class teacher of the course.
     'see_in_catalog' -- user is able to see the course listed in the course catalog.
     'see_about_page' -- user is able to see the course about page.
     """
@@ -385,6 +386,7 @@ def _has_access_course(user, action, courselike):
         'enroll': can_enroll,
         'see_exists': see_exists,
         'staff': lambda: _has_staff_access_to_descriptor(user, courselike, courselike.id),
+        'teacher': lambda: _has_teacher_access_to_descriptor(user,courselike,courselike.id),
         'instructor': lambda: _has_instructor_access_to_descriptor(user, courselike, courselike.id),
         'see_in_catalog': can_see_in_catalog,
         'see_about_page': can_see_about_page,
@@ -747,6 +749,15 @@ def _has_instructor_access_to_descriptor(user, descriptor, course_key):  # pylin
     descriptor: something that has a location attribute
     """
     return _has_instructor_access_to_location(user, descriptor.location, course_key)
+
+
+#MM NEW:
+
+def _has_teacher_access_to_descriptor(user,descriptor, course_key):
+    """
+    Helper method that checks whether the user has teacher access to the course of the location
+    """
+    return _has_teacher_access_to_location(user, descriptor.location, course_key)
 
 
 def _has_staff_access_to_descriptor(user, descriptor, course_key):

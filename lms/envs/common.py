@@ -1278,6 +1278,12 @@ instructor_dash_js = (
     sorted(rooted_glob(PROJECT_ROOT / 'static', 'js/instructor_dashboard/**/*.js'))
 )
 
+teacher_dash_js = (
+    sorted(rooted_glob(PROJECT_ROOT / 'static', 'coffee/src/teacher_dashboard/**/*.js')) +
+    sorted(rooted_glob(PROJECT_ROOT / 'static', 'js/teacher_dashboard/**/*.js'))
+)
+
+
 verify_student_js = [
     'js/sticky_filter.js',
     'js/query-params.js',
@@ -1456,8 +1462,8 @@ PIPELINE_CSS = {
 }
 
 
-common_js = set(rooted_glob(COMMON_ROOT / 'static', 'coffee/src/**/*.js')) - set(courseware_js + discussion_js + notes_js + instructor_dash_js)    # pylint: disable=line-too-long
-project_js = set(rooted_glob(PROJECT_ROOT / 'static', 'coffee/src/**/*.js')) - set(courseware_js + discussion_js + notes_js + instructor_dash_js)  # pylint: disable=line-too-long
+common_js = set(rooted_glob(COMMON_ROOT / 'static', 'coffee/src/**/*.js')) - set(courseware_js + discussion_js + notes_js + instructor_dash_js + teacher_dash_js)    # pylint: disable=line-too-long
+project_js = set(rooted_glob(PROJECT_ROOT / 'static', 'coffee/src/**/*.js')) - set(courseware_js + discussion_js + notes_js + instructor_dash_js + teacher_dash_js)  # pylint: disable=line-too-long
 
 
 PIPELINE_JS = {
@@ -1516,6 +1522,11 @@ PIPELINE_JS = {
         'source_filenames': instructor_dash_js,
         'output_filename': 'js/instructor_dash.js',
     },
+    'teacher_dash': {
+        'source_filenames': teacher_dash_js,
+        'output_filename': 'js/teacher_dash.js',
+    },
+
     'dashboard': {
         'source_filenames': dashboard_js,
         'output_filename': 'js/dashboard.js'
