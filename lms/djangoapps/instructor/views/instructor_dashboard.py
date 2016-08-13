@@ -146,7 +146,7 @@ def teacher_dashboard(request, course_id):
     new_class_dict.update({'class_set_form': class_set_form})
     
     sections = [
-        _section_course_info(course, access),
+        #_section_course_info(course, access),
         new_class_dict,
         _section_my_students(course, access, is_white_label, request.user),
         #_section_membership(course, access, is_white_label),

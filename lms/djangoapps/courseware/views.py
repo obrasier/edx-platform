@@ -963,21 +963,24 @@ def _progress(request, course_key, student_id):
     except CCXLocatorValidationException:
         coach_access = False
 
-    has_access_on_students_profiles = staff_access or coach_access or teacher_access and is_teacher_of(student,request.user,course_key)
 
     if student_id is None or student_id == request.user.id:
         # always allowed to see your own profile
         student = request.user
     else:
         # Requesting access to a different student's profile
-        if not has_access_on_students_profiles:
-            raise Http404
+        #if not has_access_on_students_profiles:
+        #    raise Http404
         try:
             student = User.objects.get(id=student_id)
+            has_access_on_students_profiles = staff_access or coach_access or (teacher_access  and is_teacher_of(student,request.user,course_key))
         # Check for ValueError if 'student_id' cannot be converted to integer.
         except (ValueError, User.DoesNotExist):
             raise Http404
-        #if (teacher_access and not is_teacher_of(student,request.user,course_key)):
+        if not has_access_on_students_profiles:
+            raise Http404
+
+       #if (teacher_access and not is_teacher_of(student,request.user,course_key)):
         #    raise Http404
 
     # NOTE: To make sure impersonation by instructor works, use
