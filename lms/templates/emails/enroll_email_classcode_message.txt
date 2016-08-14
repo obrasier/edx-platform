@@ -19,12 +19,10 @@ ${_("To access the course visit {course_about_url} and register for the course."
 % endif
 % else:
 
-${_("To finish your registration, please visit {registration_url} and fill "
-	"out the registration form making sure to use {email_address} in the E-mail field"
-    " and <strong>\"{class_code}\" in the Class Code field</strong>").format(
+${_("To finish your registration, please visit {registration_url}{url_parameters} and fill "
+	"out the registration form.").format(
 		registration_url=registration_url,
-		email_address=email_address,
-        class_code=class_code
+        url_parameters = url_parameters,
 	)}
 % if auto_enroll:
 ${_("Once you have registered and activated your account, you will see "

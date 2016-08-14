@@ -1038,6 +1038,7 @@ def _invite_with_class_code(class_code,identifier,user,course_id,request):
         # simply that it is plausibly valid)
         validate_email(email)  # Raises ValidationError if invalid
         email_params['message']='classcode_enroll'
+        email_params['url_parameters']="?type=1&email={email_address}&code={class_code}".format(email_address=identifier,class_code=class_code)
         email_params['class_code']=class_code
         email_params['teacher_name'] = "{initial} {surname}".format(initial = user.first_name[0], surname=user.last_name)
         email_params['email_address'] = identifier
