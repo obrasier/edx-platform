@@ -69,8 +69,16 @@
 
             if (regValue!=false){
                 var regField = document.getElementById(typeInputName);
-                regField.value = regValue;
-                $("#"+typeInputName).change();
+                var opts = regField.options;
+                for (var opt, j = 0; opt = opts[j]; j++){
+                    if(opt.value == regValue){
+                        regField.selectedIndex = j;
+                        $("#"+typeInputName).change();
+                        opt.selected = true;
+                        break;
+                    }
+                }
+                //regField.value = regValue;
                 regField.style.display = "none";
                 if(regValue==1){
                     var regText="   Student";
@@ -78,7 +86,9 @@
                 else if (regValue==2){
                     var regText="   Teacher";
                 }
-                regField.parentElement.innerHTML=regField.parentElement.innerHTML + "<span style='font-size:10pt'>"+ regText+ "</span>";
+                var staticLabel = regField.parentElement.appendChild(document.createElement("span"));
+                staticLabel.innerHTML = regText;
+                staticLabel.style.fontSize = "10pt";
             }
 
             if (classCodeValue!=false){
