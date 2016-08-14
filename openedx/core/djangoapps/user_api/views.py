@@ -413,13 +413,14 @@ class RegistrationView(APIView):
         # Translators: This example email address is used as a placeholder in
         # a field on the registration form meant to hold the user's email address.
         email_placeholder = _(u"username@domain.com")
-
+        email_instructions = _(u"Type your e-mail again.")
         form_desc.add_field(
             "email_confirm",
             field_type="email",
             label=email_label,
             placeholder=email_placeholder,
-            required=required
+            required=required,
+            instructions=email_instructions,
         )
 
     # Deprecated by MadMaker
@@ -923,7 +924,7 @@ class RegistrationView(APIView):
         )
 
     def _add_school_field(self, form_desc, required=True):
-        label = _("School")
+        label = _("School/Institution")
         form_desc.add_field(
             "school",
             label = label,
@@ -946,7 +947,7 @@ class RegistrationView(APIView):
     
 
     def _add_phone_field(self, form_desc, required=True):
-        label = _("Contact Number")
+        label = _("Contact Phone Number")
         form_desc.add_field(
             "phone",
             label = label,
@@ -954,6 +955,7 @@ class RegistrationView(APIView):
                 },
             reg_type=2,
             required = required,
+            instructions = _("Include the area code for landline numbers. Use either international or Australian domestic format. E.g. +61299999999 or 0299999999"),
         )
     def _add_hear_about_us_field(self, form_desc, required=False):
         label = _("")
