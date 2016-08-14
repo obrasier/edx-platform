@@ -6,6 +6,7 @@ import logging
 import uuid
 import json
 import warnings
+import re
 from collections import defaultdict
 from urlparse import urljoin
 
@@ -55,6 +56,7 @@ from student.models import (
     create_comments_service_user, PasswordHistory, UserSignupSource,
     DashboardConfiguration, LinkedInAddToProfileConfiguration, ManualEnrollmentAudit, ALLOWEDTOENROLL_TO_ENROLLED)
 from student.forms import AccountCreationForm, PasswordResetFormNoActive, get_registration_extension_form, StudentRegistrationForm, TeacherRegistrationForm
+from student.helpers import is_teacher
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification  # pylint: disable=import-error
 from certificates.models import CertificateStatuses, certificate_status_for_student
 from certificates.api import (  # pylint: disable=import-error
@@ -71,7 +73,7 @@ from xmodule.modulestore import ModuleStoreEnum
 
 from collections import namedtuple
 
-from courseware.courses import get_courses, sort_by_announcement, sort_by_start_date  # pylint: disable=import-error
+from courseware.courses import get_courses, sort_by_announcement, sort_by_start_date, get_course_by_id  # pylint: disable=import-error
 from courseware.access import has_access
 
 from django_comment_common.models import Role
@@ -128,6 +130,7 @@ from notification_prefs.views import enable_notifications
 # Note that this lives in openedx, so this dependency should be refactored.
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api
 from openedx.core.djangoapps.programs.utils import get_programs_for_dashboard
+from instructor.access import allow_access
 
 log = logging.getLogger("edx.student")
 AUDIT_LOG = logging.getLogger("audit")
@@ -1005,6 +1008,25 @@ def change_enrollment(request, check_access=True):
         )
         return HttpResponseBadRequest(_("Invalid course id"))
 
+    # MM NEW: If settings has a course specified to auto-enlist teachers by email dictionary.
+    # Check whether this course matches this list. 
+    # Check whether the user's email matches the list of regex's.
+    # If so, enlist as a teacher role for the course.
+    auto_teacher_role_access = False
+    if settings.TEACHER_ROLE_COURSES is not None:
+        log.warning("we in A")
+        if request.POST.get("course_id") in settings.TEACHER_ROLE_COURSES:
+            log.warning("we in B")
+            if settings.REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED is not None:
+                log.warning("we in C")
+                # This Open edX instance has restrictions on what email addresses are allowed.
+                allowed_patterns = settings.REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED
+                # We append a '$' to the regexs to prevent the common mistake of using a
+                # pattern like '.*@edx\\.org' which would match 'bob@edx.org.badguy.com'
+                if any(re.match(pattern + "$", user.email) for pattern in allowed_patterns):
+                    auto_teacher_role_access = is_teacher(user) # so long as there is a teacher profile
+                    log.warning("we in D")
+
     if action == "enroll":
         # Make sure the course exists
         # We don't do this check on unenroll, or a bad course id can't be unenrolled from
@@ -1046,6 +1068,10 @@ def change_enrollment(request, check_access=True):
                 enroll_mode = CourseMode.auto_enroll_mode(course_id, available_modes)
                 if enroll_mode:
                     CourseEnrollment.enroll(user, course_id, check_access=check_access, mode=enroll_mode)
+                if auto_teacher_role_access:
+                    rolename = 'teacher'
+                    course = get_course_by_id(course_id)
+                    allow_access(course, user, rolename)
             except Exception:  # pylint: disable=broad-except
                 return HttpResponseBadRequest(_("Could not enroll"))
 

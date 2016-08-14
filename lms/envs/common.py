@@ -2157,6 +2157,9 @@ REGISTRATION_EXTRA_FIELDS = {
 # that match a regex in this list. Set to None to allow any email (default).
 REGISTRATION_EMAIL_PATTERNS_ALLOWED = None
 
+REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = ["teacher[0-9]*@example.com"]
+TEACHER_ROLE_COURSES = ["course-v1:edX+DemoX+Demo_Course"]
+
 ########################## CERTIFICATE NAME ########################
 CERT_NAME_SHORT = "Certificate"
 CERT_NAME_LONG = "Certificate of Achievement"
