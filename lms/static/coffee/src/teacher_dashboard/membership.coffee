@@ -18,7 +18,7 @@ class MemberListWidget
     params = _.defaults params,
       title: "Member List"
       info: """
-        Use this list to manage members.
+        View the students that are enrolled in your class. Use the form below to invite students to your class by e-mail. Check whether your students have activated their accounts, or unenrol the accounts in your class.
       """
       labels: ["field1", "field2", "field3", "field4"]
       add_placeholder: "Enter name"
@@ -69,7 +69,7 @@ class AuthListWidget extends MemberListWidget
     super $container,
       title: $container.data 'display-name'
       info: $container.data 'info-text'
-      labels: [gettext("Username"), gettext("Email"), gettext("Status"),gettext("Revoke access")]
+      labels: [gettext("First Name"), gettext("Last Name"), gettext("Username"), gettext("Email"), gettext("Status"),gettext("Progress"),gettext("Revoke access")]
       add_placeholder: gettext("Invite by email")
       add_btn_label: $container.data 'add-button-label'
       add_handler: (input) => @add_handler input
@@ -117,6 +117,10 @@ class AuthListWidget extends MemberListWidget
 
         # create revoke button and insert it into the row
         label_trans = gettext("Unenrol account")
+        label_trans2 = gettext("View Progress") 
+        $progress_btn = $ _.template('<a href="./progress/<%= uid %>"><div class="progress"><i class="icon fa fa-bar-chart" aria-hidden="true"></i> <%= label %></div>', {label: label_trans2,uid: member.unique_id}),
+          class: 'progress'
+        
         $revoke_btn = $ _.template('<div class="revoke"><i class="icon fa fa-times-circle" aria-hidden="true"></i> <%= label %></div>', {label: label_trans}),
           class: 'revoke'
         $revoke_btn.click =>
@@ -126,7 +130,7 @@ class AuthListWidget extends MemberListWidget
                   return @show_errors error unless error is null
                   @clear_errors()
                   @reload_list()
-        @add_row [member.username, member.email, (if member.status then "Active" else "Not Activated"), $revoke_btn]
+        @add_row [member.first_name, member.last_name, member.username, member.email, (if member.status then "Active" else "Not Activated"), (if member.status then $progress_btn),$revoke_btn,]
 
   # clear error display
   clear_errors: -> @$error_section?.text ''

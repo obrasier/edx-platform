@@ -40,21 +40,25 @@ from openedx.core.djangoapps.course_groups.partition_scheme import get_cohorted_
 
   <div class="wrapper-member-select">
     ## Translators: an "Administrator Group" is a group, such as Course Staff, that users can be added to.
-    <label for="member-lists-selector">${_("Select a course team role:")}</label>
+    %if len(section_data['class_code_list']) == 0:
+        <label for="member-lists-selector">${_("You have no classes. Create a new class in the My Classes Tab above.")}</label>
+    %else:
+        <label for="member-lists-selector">${_("Select which class to view:")}</label>
+    %endif
     <select id="member-lists-selector" class="member-lists-selector">
         %if len(section_data['class_code_list']) > 0:
             % for c in section_data['class_code_list']:
                 <option value="${c['class_code']}">$c['class_code']}: ${c['short_name']}</option>
             %endfor
         %else:
-            <option> ${_("No classes available")} </option>
+            <option> ${_("No classes available. Create a new class in the My Classes Tab")} </option>
         %endif
     </select>
 
   </div>
 
   %if section_data['access']['teacher']:
-    <p>I am a teacher, and therefore:</p>  
+    <p></p>  
 
   %for c in section_data['class_code_list']:
     <div class="auth-list-container"
