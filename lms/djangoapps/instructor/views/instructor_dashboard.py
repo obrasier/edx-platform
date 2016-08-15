@@ -144,12 +144,13 @@ def teacher_dashboard(request, course_id):
 
     new_class_dict = _section_my_classes(course,access,request.user)
     new_class_dict.update({'class_set_form': class_set_form})
+    class_code_list = get_class_codes_of_teacher(request.user,course_key)
     
     sections = [
         #_section_course_info(course, access),
         new_class_dict,
-        _section_my_students(course, access, is_white_label, request.user),
-        #_section_membership(course, access, is_white_label),
+        _section_my_students(course, access, is_white_label, request.user, class_code_list),
+        _section_grade_centre(course, access,class_code_list),
     ]
     
     context = {
@@ -179,7 +180,7 @@ def _create_new_class(form, course_key, user):
         log.error("Error creating class set for %s"%user)
         raise 
 
-def _section_my_students_old(course,access, is_white_label,user):
+def _section_my_students_old(course,access, is_white_label,user,class_code_list=None):
     course_key = course.id
     section_data = {
    }
@@ -194,7 +195,7 @@ def _section_my_students_old(course,access, is_white_label,user):
         'list_students_of_class_code_url': reverse('list_students_of_class_code',kwargs={'course_id': unicode(course_key)}),
 	'list_course_role_members_url': reverse('list_course_role_members', kwargs={'course_id': unicode(course_key)}),
 	'update_forum_role_membership_url': reverse('update_forum_role_membership', kwargs={'course_id': unicode(course_key)}),
-	'class_code_list': get_class_codes_of_teacher(user,course_key),
+	'class_code_list': class_code_list, 
         'enroll_button_url': reverse('students_update_enrollment', kwargs={'course_id': unicode(course_key)}),
         'unenroll_button_url': reverse('students_update_enrollment', kwargs={'course_id': unicode(course_key)}),
         'upload_student_csv_button_url': reverse('register_and_enroll_students', kwargs={'course_id': unicode(course_key)}),
@@ -574,7 +575,7 @@ def set_course_mode_price(request, course_id):
     )
     return JsonResponse({'message': _("CourseMode price updated successfully")})
 
-def _section_my_students(course, access, is_white_label, user):
+def _section_my_students(course, access, is_white_label, user, class_code_list=None):
     """ Provide data for the corresponding dashboard section """
     course_key = course.id
     ccx_enabled = settings.FEATURES.get('CUSTOM_COURSES_EDX', False) and course.enable_ccx
@@ -583,7 +584,7 @@ def _section_my_students(course, access, is_white_label, user):
         'section_display_name': _('My Students'),
         'access': access,
         'ccx_is_enabled': ccx_enabled,
-        'class_code_list': get_class_codes_of_teacher(user,course_key),
+        'class_code_list': class_code_list,
         'is_white_label': is_white_label,
         'list_students_of_class_code_url': reverse('list_students_of_class_code',kwargs={'course_id': unicode(course_key)}),
         'modify_students_of_class_code_url': reverse('modify_students_of_class_code',kwargs={'course_id': unicode(course_key)}),#TODO: ADD URLS IN
@@ -772,6 +773,42 @@ def _section_data_download(course, access):
         'problem_grade_report_url': reverse('problem_grade_report', kwargs={'course_id': unicode(course_key)}),
         'course_has_survey': True if course.course_survey_name else False,
         'course_survey_results_url': reverse('get_course_survey_results', kwargs={'course_id': unicode(course_key)}),
+    }
+    return section_data
+
+def _section_grade_centre(course, access,class_code_list):
+    """ Provide data for the corresponding dashboard section """
+    course_key = course.id
+
+    show_proctored_report_button = (
+        settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
+        course.enable_proctored_exams
+    )
+
+    section_data = {
+        'section_key': 'data_download',
+        'section_display_name': _('Grade Centre'),
+        'access': access,
+        'show_generate_proctored_exam_report_button': show_proctored_report_button,
+        'get_problem_responses_url': reverse('get_problem_responses', kwargs={'course_id': unicode(course_key)}),
+        'gradebook_url':reverse('teacher_gradebook_min', kwargs={'course_id': unicode(course_key)}),
+        'get_grading_config_url': reverse('get_grading_config', kwargs={'course_id': unicode(course_key)}),
+        'get_students_features_url': reverse('get_students_features', kwargs={'course_id': unicode(course_key)}),
+        'get_issued_certificates_url': reverse(
+            'get_issued_certificates', kwargs={'course_id': unicode(course_key)}
+        ),
+        'get_students_who_may_enroll_url': reverse(
+            'get_students_who_may_enroll', kwargs={'course_id': unicode(course_key)}
+        ),
+        'get_anon_ids_url': reverse('get_anon_ids', kwargs={'course_id': unicode(course_key)}),
+        'list_proctored_results_url': reverse('get_proctored_exam_results', kwargs={'course_id': unicode(course_key)}),
+        'list_instructor_tasks_url': reverse('list_instructor_tasks', kwargs={'course_id': unicode(course_key)}),
+        'list_report_downloads_url': reverse('list_report_downloads', kwargs={'course_id': unicode(course_key)}),
+        'calculate_grades_csv_url': reverse('calculate_grades_csv', kwargs={'course_id': unicode(course_key)}),
+        'problem_grade_report_url': reverse('problem_grade_report', kwargs={'course_id': unicode(course_key)}),
+        'course_has_survey': True if course.course_survey_name else False,
+        'course_survey_results_url': reverse('get_course_survey_results', kwargs={'course_id': unicode(course_key)}),
+        'class_code_list': class_code_list,
     }
     return section_data
 

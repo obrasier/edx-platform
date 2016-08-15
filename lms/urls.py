@@ -516,6 +516,34 @@ urlpatterns += (
         'instructor.views.instructor_dashboard.teacher_dashboard',
         name='teacher_dashboard'
     ),
+    url(
+        r'^courses/{}/teacher/gradebook$'.format(
+            settings.COURSE_ID_PATTERN,
+        ),
+        'instructor.views.teacher_gradebook.teach_gradebook',
+        name='teacher_gradebook_min'
+    ),
+    url(
+        r'^courses/{}/teacher/gradebook/{}$'.format(
+            settings.COURSE_ID_PATTERN,"(?P<class_code>[A-Z]{4}[0-9]{4})"
+        ),
+        'instructor.views.teacher_gradebook.teach_gradebook',
+        name='teacher_gradebook'
+    ),
+    url(
+        r'^courses/{}/teacher/gradebook/{}/{}$'.format(
+            settings.COURSE_ID_PATTERN,"(?P<class_code>[A-Z]{4}[0-9]{4})","(?P<current_offset>[0-9]+)"
+        ),
+        'instructor.views.teacher_gradebook.teach_gradebook',
+        name='teacher_gradebook'
+    ),
+    #url(
+    #    r'^courses/{}/teacher/gradebook/(?P<code>[A-Z]{{4}}[0-9]{{4}})/(?P<offset>[0-9]+)$'.format(
+    #        settings.COURSE_ID_PATTERN,
+    #    ),
+    #    'instructor.views.teacher_gradebook.teach_gradebook',
+    #    name='teacher_gradebook'
+    #),
 # [MM END]
     url(
         r'^courses/{}/set_course_mode_price$'.format(
