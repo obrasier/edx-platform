@@ -17,7 +17,7 @@ from django.views.decorators.cache import cache_control
 from edxmako.shortcuts import render_to_response
 from django.core.urlresolvers import reverse
 from django.utils.html import escape
-from django.http import Http404, HttpResponseServerError
+from django.http import Http404, HttpResponseServerError, HttpResponseRedirect
 from django.conf import settings
 from util.json_request import JsonResponse
 from mock import patch
@@ -135,7 +135,8 @@ def teacher_dashboard(request, course_id):
         if class_set_form.is_valid():
             _create_new_class(class_set_form, course_key, request.user)
             class_form_dict.update( {'success': 'Class successfully added!'})
-            class_set_form = ClassSetForm() # refresh to blank form
+            return HttpResponseRedirect(reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+'#view-my_classes')
+            #class_set_form = ClassSetForm() # refresh to blank form
         else:
             pass                            # errors will be updated
     else:

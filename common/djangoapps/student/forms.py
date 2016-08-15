@@ -492,9 +492,9 @@ class ClassSetForm(ModelForm):
         labels = {
             'short_name': _('Short Name'),
             'class_name':_('Class Team Name'),
-            'assessment':_('Assessment'),
+            'assessment':_('Will You be using the grades in this course for your teaching program''s assessment?'),
             'subs':_('Subject'),
-            'no_of_students': _('Number of students in class'),
+            'no_of_students': _('Anticipated number of students in class'),
         }
         help_texts = {
             'short_name': _('A quick personal reference name.'),

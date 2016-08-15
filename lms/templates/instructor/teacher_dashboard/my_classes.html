@@ -8,23 +8,19 @@
     % for c in section_data["my_classes"]:
     <li>
     <div class="teacher-dashboard-class-item">
-            <div class="teacher-dashboard-class-header">
-            <ul> 
-                <li> Short Name: ${c["short_name"]}
-                <li> Class Name: ${c["class_name"]}
-                <li> Class Code: ${c["class_code"]}
-                <li> Total Accounts: ${c["total_accounts"]}
-            </ul>
+            <div class="teacher-dashboard-class-header" >
+                ${c["class_code"]}: &nbsp;${c["class_name"]}&nbsp; ( ${c["short_name"]} )
+                <i class="fa fa-chevron-down" aria-hidden="true" style="float: right"></i>
         </div>
-        <div class="teacher-dashboard-class-body">
+        <div class="teacher-dashboard-class-body" style="display:none">
             <ul>
-                <li> Grade: ${c["grade"]}
-                <li> Subject: ${c["subject"]}
-                <li> School:${c["school_name"]}
-                <li> Number Of Students:${c["no_of_students"]}
-                <li> Active Accounts: ${c["active_accounts"]}
-                <li> Inactive Accounts: ${c["total_accounts"]-c["active_accounts"]}
-                <li> Assessment: ${c["assessment"]}
+                <li> Grade:&nbsp; ${c["grade"]}
+                <li> Subject:&nbsp; ${c["subject"]}
+                <li> School:&nbsp;${c["school_name"]}
+                <li> Number Of Students:&nbsp;${c["no_of_students"]}
+                <li> Active Accounts: &nbsp;${c["active_accounts"]}
+                <li> Inactive Accounts: &nbsp;${c["total_accounts"]-c["active_accounts"]}
+                <li> Assessment: &nbsp;${c["assessment"]}
             </ul>
         </div>
         <div class="teacher-dashboard-class-timetable">
@@ -33,26 +29,84 @@
     % endfor
     </ul>
 </div>
-
-<div class="create-class-button">
-    <img src="/static/admin/img/icon_addlink.gif" width="10" height="10" alt="Add"> Create Class
+<div style="width: 100%; text-align: center">
+<div class="create-class-button" style="width: 100%; margin: 0 auto;display:inline-block">
+    <button id="add-button" style="width: 30%; margin: 0 auto; display: inline-block"><i class='fa fa-plus-circle' aria-hidden='true'></i> Create Class</button>
 </div>
-
-<div class="teacher-dashboard-class-form">
+</div>
+<div id="teacher-dashboard-class-form" style="display:none">
     <div id="new-class-set-form" class="form-wrapper">
-        <form id="create-class-set" action="teacher#view-my_classes" method="post">
-            <div id="form-errors">
-            </div>
-            <div class="section-title lines">
+            <div class="section-title-form">
                 <h2>
                     <span class="text">Create a new class</span>
                 </h2>
             </div>
+        <form id="create-class-set" action="teacher#view-my_classes" method="post">
+            <div id="form-errors">
+            </div>
             <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
-            ${ section_data['class_set_form'] }
-            <input type="submit" value="Submit" />
+        ${ section_data['class_set_form'] }
+        <br><span class="helptext">The total number of students that will participate in the class.</span>
+            <p>
+                <input type="submit" value="Submit" />
+            </p>
         </form>
         
     </div>
 </div>
+<script>
+var button = document.getElementById('add-button'); // Assumes element with id='button'
 
+button.onclick = function() {
+    var div = document.getElementById('teacher-dashboard-class-form');
+    if (div.style.display !== 'none') {
+        div.style.display = 'none';
+    }
+    else {
+        div.style.display = 'block';
+    }
+};
+$(".teacher-dashboard-class-header").click(function () {
+    $(this).next().toggle();
+    $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
+});
+
+if(document.getElementsByClassName("errorlist")!=null){
+    var div = document.getElementById('teacher-dashboard-class-form');
+    div.style.display='block';
+}
+</script>
+
+<style>
+    .errorlist {color: red;
+                margin-top: -5pt;
+                margin-left: -30pt;
+                font-size: 10pt;
+                }
+    ul{list-style-type: none;}
+    .helptext{font-size: 10pt;
+              color: #666; 
+              font-style: italic; }
+    form label{padding-top: 8pt;}
+    .section-title-form{padding-top:20pt;padding-left:15pt;}
+    .form-wrapper{background-color:#EEE;
+                    padding: 15pt;
+                    margin-top:10pt;
+                    padding-bottom:40pt;}
+    form{margin-left: 30pt;}
+    .teacher-dashboard-class-header, .teacher-dashboard-class-body{
+        padding: 3pt;
+        line-height: 1.5;
+    }
+    .teacher-dashboard-class-header{
+        background-color: #57C;
+        font-weight:700;
+        padding: 10pt;
+    }
+    .teacher-dashboard-class-body{
+    }
+    .teacher-dashboard-class-item{
+        margin-bottom: 30pt;
+        background-color: #e6eef7;
+    }
+</style>
