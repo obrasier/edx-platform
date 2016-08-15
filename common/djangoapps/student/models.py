@@ -2154,6 +2154,11 @@ class StudentProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def __unicode__(self):              # __str__ on Python 3
+        display = [unicode(self.user.email),unicode(self.user.username),unicode(self.user.last_name),unicode(self.user.first_name)]
+        return ', '.join(display)
+
+    
         
  
 
