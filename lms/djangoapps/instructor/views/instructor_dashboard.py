@@ -78,7 +78,6 @@ class TeacherDashboardTab(CourseTab):
         Returns true if the specified user has staff access.
         """
         return bool(user and has_access(user, 'teacher', course.id))
-        return True
 
 class InstructorDashboardTab(CourseTab):
     """
