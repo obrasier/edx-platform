@@ -792,9 +792,9 @@ class RegistrationView(APIView):
         else:
             # Translators: This is a legal document users must agree to
             # in order to register a new account.
-            terms_text = _(u"Terms of Service and Honor Code")
+            terms_text = _(u"Terms of Service and Honor Code <i class=\"fa fa-external-link\" aria-hidden=\"true\"></i>")
 
-        terms_link = u"<a href=\"{url}\">{terms_text}</a>".format(
+        terms_link = u"<a href=\"{url}\" target=\"_blank\">{terms_text}</a>".format(
             url=marketing_link("HONOR"),
             terms_text=terms_text
         )
