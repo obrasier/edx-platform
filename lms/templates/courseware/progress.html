@@ -44,6 +44,13 @@ from django.utils.http import urlquote_plus
         </div>
       % endif
 
+      % if teacher_access:
+        <div class="wrap-instructor-info">
+          <a class="instructor-info-action" href="${teacher_dashboard_url}"><i class="fa fa-arrow-left" aria-hidden="true"></i> ${_("Back to My Students")}</a>
+        </div>
+      % endif
+
+
       <header class="progress-certificates">
         <h1 class="progress-certificates-title">${_("Course Progress for Student '{username}' ({email})").format(username=student.username, email=student.email) | h}</h1>
       </header>

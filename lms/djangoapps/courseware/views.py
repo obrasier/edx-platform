@@ -1001,7 +1001,7 @@ def _progress(request, course_key, student_id):
         student, request, course, field_data_cache=field_data_cache, scores_client=scores_client
     )
     studio_url = get_studio_url(course, 'settings/grading')
-
+    teacher_dashboard_url = reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+"#view-membership"
     if courseware_summary is None:
         #This means the student didn't have access to the course (which the instructor requested)
         raise Http404
@@ -1013,8 +1013,10 @@ def _progress(request, course_key, student_id):
         'course': course,
         'courseware_summary': courseware_summary,
         'studio_url': studio_url,
+        'teacher_dashboard_url': teacher_dashboard_url, 
         'grade_summary': grade_summary,
         'staff_access': staff_access,
+        'teacher_access': teacher_access,
         'student': student,
         'passed': is_course_passed(course, grade_summary),
         'show_generate_cert_btn': show_generate_cert_btn,
