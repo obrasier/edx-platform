@@ -42,7 +42,20 @@ from django.core.urlresolvers import reverse
   <section class="gradebook-content">
     <h1>${_("Gradebook")}</h1>
 
+<div class="wrap-instructor-info">
+<p>
+    % if teacher_access:
+    <a class="instructor-info-action" href="${teacher_dashboard_url}"><i class="fa fa-arrow-left" aria-hidden="true"></i> ${_("Back to Grade Centre")}</a>
+</p>
+<p><br></p>
+    % endif
+</div>
     <table class="student-table">
+    %if len(students)==0:
+            <p>
+            <div>You have no active students in your class.</div>
+            </p>
+    %else:
       <thead>
         <tr>
           <th>
@@ -52,6 +65,7 @@ from django.core.urlresolvers import reverse
           </th>
         </tr>
       </thead>
+    %endif
       <tbody>
         %for student in students:
         <tr>
@@ -62,7 +76,6 @@ from django.core.urlresolvers import reverse
         %endfor
       </tbody>
     </table>
-
 
 
     %if len(students) > 0:
@@ -124,6 +137,7 @@ from django.core.urlresolvers import reverse
              class="sequence-nav-button button-previous">
             <span class="icon fa fa-chevron-left" aria-hidden="true"></span><span class="sr">${_('previous page')}</span>
           </a>
+        
         %endif
 
         ${_('Page')} ${page["page_num"]} ${_('of')} ${page["total_pages"]}

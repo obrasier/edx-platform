@@ -127,10 +127,14 @@ def teach_gradebook(request, course_id,class_code=None,current_offset=None):
     course_key = CourseKey.from_string(course_id)
     course = get_course_with_access(request.user, 'teacher', course_key, depth=None)
     student_info, page = get_grade_book_page(request, course, course_key,class_set,current_offset)
+    teacher_dashboard_url = reverse('teacher_dashboard',kwargs={'course_id': unicode(course_key)})+"#view-data_download"
     
+
     return render_to_response('courseware/gradebook.html', {
+        'teacher_access': True,
         'page': page,
         'page_url': reverse('teacher_gradebook', kwargs={'course_id': unicode(course_key),'class_code':class_code,'current_offset':current_offset}),
+        'teacher_dashboard_url': teacher_dashboard_url,
         'students': student_info,
         'course': course,
         'course_id': course_key,
