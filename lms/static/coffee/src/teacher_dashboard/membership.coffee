@@ -70,7 +70,7 @@ class AuthListWidget extends MemberListWidget
       title: $container.data 'display-name'
       info: $container.data 'info-text'
       labels: [gettext("First Name"), gettext("Last Name"), gettext("Username"), gettext("Email"), gettext("Status"),gettext("Progress"),gettext("Revoke access")]
-      add_placeholder: gettext("Invite by email")
+      add_placeholder: gettext("Enter email addresses separated by new lines or commas.")
       add_btn_label: $container.data 'add-button-label'
       add_handler: (input) => @add_handler input
 
@@ -155,6 +155,10 @@ class AuthListWidget extends MemberListWidget
   # `action` can be 'allow' or 'revoke'
   # `cb` is called with cb(error, data)
   modify_member_access: (unique_student_identifier, action, cb) ->
+    if action == 'revoke'
+      type = 'GET'
+    else 
+      type = 'POST'
     $.ajax
       dataType: 'json'
       url: @modify_endpoint
@@ -162,6 +166,7 @@ class AuthListWidget extends MemberListWidget
         unique_student_identifier: unique_student_identifier
         rolename: @rolename
         action: action
+      type: type
       success: (data) => @member_response data
       error: std_ajax_err => cb? gettext "Error changing user's permissions."
 

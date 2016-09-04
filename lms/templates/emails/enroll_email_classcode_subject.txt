@@ -1,5 +1,8 @@
 <%! from django.utils.translation import ugettext as _ %>
-
+% if existing_user:
+${_("You have been added to the class: {class_code} by your teacher").format(class_code=class_code)}
+% else:
 ${_("You have been invited to register for {course_name}").format(
 		course_name=display_name or course.display_name_with_default_escaped
 	)}
+% endif

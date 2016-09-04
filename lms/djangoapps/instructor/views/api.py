@@ -938,23 +938,32 @@ def modify_access(request, course_id):
     return JsonResponse(response_payload)
 
 # MM NEW
-
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('teacher')
-def modify_students_of_class_code(request, course_id):
+#@require_level('teacher')
+@require_post_params('unique_student_identifier', 'rolename')
+def _add_to_class_code(request, course_id):
     """
-    Checks modify action before continuing. Requires teach access.
-    """
+    Enroll or unenroll students by email.
+    Requires teacher access.
 
-    response_payload={}
+    Post Parameters:
+    - class_code
+    - identifiers is string containing a list of emails and/or usernames separated by anything split_input_list can handle.
+
+    """
+    print "here we made it"
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-    class_code = request.GET.get('rolename')
-    action = request.GET.get('action')
-    identifier = request.GET.get('unique_student_identifier')
+    identifiers_raw = request.POST.get('unique_student_identifier')
+    identifiers = _split_input_list(identifiers_raw)
+    is_white_label = CourseMode.is_white_label(course_id)
+    action = request.POST.get('action')
+    class_code= request.POST.get('rolename')
+    print 'class code' + class_code
     try:
         class_set = ClassSet.objects.get(class_code=class_code)
     except ClassSet.DoesNotExist:
+        print "Class Does Not Exist"
         return HttpResponseBadRequest()
     
     course = get_course_with_access(
@@ -964,61 +973,154 @@ def modify_students_of_class_code(request, course_id):
     # if teacher is not teacher of class_code
         #then bad request/permission denied
     if request.user != class_set.teacher:
-        raise ValueError('Not teacher of class')
+        return HttpResponseBadRequest()
 
-    # Validate identifier input
-    try:
-        student = get_student_from_identifier(identifier)
-    except User.DoesNotExist:
+    enrollment_obj = None
+    state_transition = DEFAULT_TRANSITION_STATE
+
+    results = []
+    for identifier in identifiers:
+        # First try to get a user object from the identifer
+        user = None
+        email = None
+        language = None
+        try:
+            user = get_student_from_identifier(identifier)
+        except User.DoesNotExist:
+            email = identifier
+            response_payload = _invite_with_class_code(class_code,email,request.user,course_id,request)
+            # TODO: handle response payload
+        except Exception as exc:  # pylint: disable=broad-except
+            # catch and log any exceptions
+            # so that one error doesn't cause a 500.
+            log.exception(u"Error while #{}ing student")
+            log.exception(exc)
+            results.append({
+                'identifier': identifier,
+                'error': True,
+            })
+        else:
+            email = user.email
+            language = get_user_email_language(user)
+            success = _add_student_to_class_set(class_set,user)
+            results.append({
+                'identifier': identifier,
+                'error': not success,
+            })
+            # TODO: handle success   
+
+    response_payload = {
+        'action': action,
+        'results': results,
+    }
+    return JsonResponse(response_payload)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('teacher')
+def modify_students_of_class_code(request, course_id):
+    """
+    Checks modify action before continuing. Requires teach access.
+    """
+    if request.method == "POST":
+        return _add_to_class_code(request,course_id)
+    elif request.method == "GET":
+        response_payload={}
+        course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+        class_code = request.GET.get('rolename')
+        action = request.GET.get('action')
+        identifier = request.GET.get('unique_student_identifier')
+        try:
+            class_set = ClassSet.objects.get(class_code=class_code)
+        except ClassSet.DoesNotExist:
+            return HttpResponseBadRequest()
+        
+        course = get_course_with_access(
+            request.user, 'teacher', course_key, depth=None
+        )
+        
+        # if teacher is not teacher of class_code
+            #then bad request/permission denied
+        if request.user != class_set.teacher:
+            raise ValueError('Not teacher of class')
+
+        # Validate identifier input
+        try:
+            student = get_student_from_identifier(identifier)
+        except User.DoesNotExist:
+            if action == 'allow':
+                #need to validate for email and send e-mail invitation
+                response_payload = _invite_with_class_code(class_code,identifier,request.user,course_key,request)
+                return JsonResponse(response_payload)
+            elif action == 'revoke':
+                response_payload = {
+                    'unique_student_identifier': request.GET.get('unique_student_identifier'),
+                    'userDoesNotExist': True,
+                }
+                return JsonResponse(response_payload)
+
+            else:
+                return HttpResponseBadRequest(strip_tags(
+                    "unrecognized action '{}'".format(action)
+                ))
+
         if action == 'allow':
-            #need to validate for email and send e-mail invitation
-            response_payload = _invite_with_class_code(class_code,identifier,request.user,course_id,request)
-            return JsonResponse(response_payload)
+        #   for now allow only sends an e-mail invitation with an invite to use the class_code in the registration.
+        #   TODO: render class_code with registration fields (and lock field on form).        
+            success = _add_student_to_class_set(class_set,student)
+            if not success:
+                response_payload['userHasNoStudentProfile'] = True
+                           
         elif action == 'revoke':
-            response_payload = {
-                'unique_student_identifier': request.GET.get('unique_student_identifier'),
-                'userDoesNotExist': True,
-            }
-            return JsonResponse(response_payload)
-
+            revoke_student_from_class_set(class_set, student)
+            success = True
         else:
             return HttpResponseBadRequest(strip_tags(
                 "unrecognized action '{}'".format(action)
             ))
-        
-   
-    if action == 'allow':
-    #   for now allow only sends an e-mail invitation with an invite to use the class_code in the registration.
-    #   TODO: render class_code with registration fields (and lock field on form).        
-        success = add_student_to_class_set(class_set,student)
-        if not success:
-            response_payload['userHasNoStudentProfile'] = True
-                       
-    elif action == 'revoke':
-        revoke_student_from_class_set(class_set, student)
-        success = True
-    else:
-        return HttpResponseBadRequest(strip_tags(
-            "unrecognized action '{}'".format(action)
-        ))
+        response_payload.update({
+            'unique_student_identifier': student.username,
+            'rolename': class_code,
+            'action': action,
+            'success': success,
+        })
 
-    response_payload.update({
-        'unique_student_identifier': student.username,
-        'rolename': class_code,
-        'action': action,
-        'success': success,
-    })
     return JsonResponse(response_payload)
 
-def add_student_to_class_set(class_set,student):
+def _add_student_to_class_set(class_set,student):
     """
     returns true if successfully added. Returns false if user does not have a student profile.
     """
-    try:
-        class_set.studentprofile_set.add(student.studentprofile)
-        return True
-    except StudentProfile.DoesNotExist:
-        return False
+    course = get_course_by_id(class_set.course_id)
+    auto_enroll = True
+    email_params = get_email_params(course, auto_enroll, secure=True)
+    if CourseEnrollment.is_enrolled(student, class_set.course_id):
+        try:
+            class_set.studentprofile_set.add(student.studentprofile)
+        except StudentProfile.DoesNotExist:
+            return False
+        try:
+            email_params['message']='classcode_enroll'
+            email_params['student_name']=student.first_name
+            email_params['class_code']=class_set.class_code
+            email_params['url_parameters']=""
+            email_params['teacher_name'] = "{initial} {surname}".format(initial = class_set.teacher.first_name[0], surname=class_set.teacher.last_name)
+            email_params['email_address'] = student.email
+            email_params['existing_user'] = True
+            email_params['contact_email']= settings.CONTACT_EMAIL
+            print email_params
+            success = send_mail_to_student(student.email,param_dict=email_params,language=None)
+        except Exception as exc:  # pylint: disable=broad-except
+            # catch and log any exceptions
+            # so that one error doesn't cause a 500.
+            log.exception(u"Error while #{}ing student")
+            log.exception(exc)
+            success = False
+    else:
+        success = False
+        log.error("Tried to add existing account to class code, who is not enrolled in the course")
+    return success
 
 def _invite_with_class_code(class_code,identifier,user,course_id,request):
     auto_enroll = True

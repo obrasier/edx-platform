@@ -1,14 +1,20 @@
 <%! from django.utils.translation import ugettext as _ %>
 
-${_("Dear student,")}
+% if existing_user:
+${_("Dear {student_name},").format(
+        student_name = student_name,
+    )}
 
-${_("You have been invited to join {course_name} at {site_name} by "
-	"your teacher/supervisor, Mr/Ms {teacher_name}.").format(
+${_("Your teacher/supervisor, Mr/Ms {teacher_name}, has added you to their class: {class_code} for the course {course_name} at {site_name}."
+	"").format(
 		course_name=display_name or course.display_name_with_default_escaped,
 		site_name=site_name,
-        teacher_name=teacher_name
+        teacher_name=teacher_name,
+        class_code=class_code,
 	)}
-% if is_shib_course:
+
+${_("If you do not think you belong to this class, please contact us at {contact_email}").format(contact_email=contact_email)}
+
 % if auto_enroll:
 
 ${_("To access the course visit {course_url} and login.").format(course_url=course_url)}
@@ -18,11 +24,24 @@ ${_("To access the course visit {course_about_url} and register for the course."
 		course_about_url=course_about_url)}
 % endif
 % else:
+${_("Dear student,")}
+
+${_("You have been invited to join {course_name} at {site_name} by "
+	"your teacher/supervisor, Mr/Ms {teacher_name}.").format(
+		course_name=display_name or course.display_name_with_default_escaped,
+		site_name=site_name,
+        teacher_name=teacher_name
+	)}
 
 ${_("To finish your registration, please visit {registration_url}{url_parameters} and fill "
 	"out the registration form.").format(
 		registration_url=registration_url,
         url_parameters = url_parameters,
+	)}
+
+${_("If the registration form does not auto fill in your class code, please manually enter your class code <strong>{class_code}</strong>"
+	"").format(
+		class_code=class_code,
 	)}
 % if auto_enroll:
 ${_("Once you have registered and activated your account, you will see "
