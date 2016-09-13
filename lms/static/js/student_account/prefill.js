@@ -107,7 +107,10 @@
                 if (strict){
                     emailField.readOnly = true;
                     emailField.style.backgroundColor = "#EEE";
-                    document.getElementById("register-email-desc").innerHTML="Your teacher has requested you use this e-mail address.";
+                    var strict_desc = document.getElementById("register-email").parentElement.appendChild(document.createElement("span"));
+                    strict_desc.innerHTML="<i>Your teacher has requested you use this e-mail address.</i>";
+                    strict_desc.className = "tip tip-input";
+                    strict_desc.id = "register-email-desc";
                 }
             }
 
