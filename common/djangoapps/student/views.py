@@ -2573,6 +2573,8 @@ def sso(request):
         'email': request.user.email,
         'external_id': request.user.id,
         'username': request.user.username,
+        'moderator': is_teacher(request.user),
+        'admin': request.user.is_staff or request.user.is_superuser,
     }
 
     return_payload = base64.encodestring(urllib.urlencode(params))
