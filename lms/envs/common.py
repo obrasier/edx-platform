@@ -44,6 +44,11 @@ from xmodule.modulestore.edit_info import EditInfoMixin
 from xmodule.mixin import LicenseMixin
 from lms.djangoapps.lms_xblock.mixin import LmsBlockMixin
 
+################################### DISCOURSE SSO ##############################
+ENABLE_DISCOURSE_SSO = False
+DISCOURSE_BASE_URL = "http://www.discourse.com"
+DISCOURSE_SSO_SECRET = "examplesecretkey"
+
 ################################### FEATURES ###################################
 # The display name of the platform to be used in templates/emails/etc.
 PLATFORM_NAME = "Your Platform Name Here"

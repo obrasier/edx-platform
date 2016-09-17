@@ -111,6 +111,10 @@ CELERYBEAT_SCHEDULE = {}  # For scheduling tasks, entries can be added to this d
 with open(CONFIG_ROOT / CONFIG_PREFIX + "env.json") as env_file:
     ENV_TOKENS = json.load(env_file)
 
+################################### DISCOURSE SSO ##############################
+ENABLE_DISCOURSE_SSO = ENV_TOKENS.get('ENABLE_DISCOURSE_SSO',ENABLE_DISCOURSE_SSO)
+DISCOURSE_BASE_URL = ENV_TOKENS.get('DISCOURSE_BASE_URL', None)
+
 # STATIC_ROOT specifies the directory where static files are
 # collected
 STATIC_ROOT_BASE = ENV_TOKENS.get('STATIC_ROOT_BASE', None)
@@ -396,6 +400,9 @@ FIELD_OVERRIDE_PROVIDERS = tuple(ENV_TOKENS.get('FIELD_OVERRIDE_PROVIDERS', []))
 
 with open(CONFIG_ROOT / CONFIG_PREFIX + "auth.json") as auth_file:
     AUTH_TOKENS = json.load(auth_file)
+
+############## DISCOURSE SECRET KEY ##########
+DISCOURSE_SSO_SECRET = AUTH_TOKENS.get('DISCOURSE_SSO_SECRET', None)
 
 ############### XBlock filesystem field config ##########
 if 'DJFS' in AUTH_TOKENS and AUTH_TOKENS['DJFS'] is not None:
