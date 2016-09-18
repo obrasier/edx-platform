@@ -16,6 +16,9 @@ from config_models.views import ConfigurationModelCurrentAPIView
 from openedx.core.djangoapps.programs.models import ProgramsApiConfig
 from openedx.core.djangoapps.self_paced.models import SelfPacedConfiguration
 
+if settings.ENABLE_GITHUB_GIST_PROXY:
+    from httpproxy.views import HttpProxy
+
 # Uncomment the next two lines to enable the admin:
 if settings.DEBUG or settings.FEATURES.get('ENABLE_DJANGO_ADMIN_SITE'):
     admin.autodiscover()
@@ -106,7 +109,12 @@ urlpatterns = (
     url(r'^api/credit/', include('openedx.core.djangoapps.credit.urls', app_name="credit", namespace='credit')),
     url(r'^rss_proxy/', include('rss_proxy.urls', namespace='rss_proxy')),
 )
-
+if settings.ENABLE_GITHUB_GIST_PROXY:
+    urlpatterns += (
+# makes a proxy pathway to gist site
+        url(r'^gist/(?P<url>.*)$',
+            HttpProxy.as_view(base_url=settings.GITHUB_GIST_BASE_URL)),
+    )
 if settings.FEATURES["ENABLE_COMBINED_LOGIN_REGISTRATION"]:
     # Backwards compatibility with old URL structure, but serve the new views
     urlpatterns += (

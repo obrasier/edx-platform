@@ -111,6 +111,13 @@ CELERYBEAT_SCHEDULE = {}  # For scheduling tasks, entries can be added to this d
 with open(CONFIG_ROOT / CONFIG_PREFIX + "env.json") as env_file:
     ENV_TOKENS = json.load(env_file)
 
+################################### GITHUB PROXY ###############################
+ENABLE_GITHUB_GIST_PROXY =  ENV_TOKENS.get('ENABLE_GITHUB_GIST_PROXY ',False)
+GITHUB_GIST_BASE_URL = ENV_TOKENS.get('GITHUB_GIST_BASE_URL', None)
+
+if ENABLE_GITHUB_GIST_PROXY:
+    INSTALLED_APPS += ('httpproxy',)
+
 ################################### DISCOURSE SSO ##############################
 ENABLE_DISCOURSE_SSO = ENV_TOKENS.get('ENABLE_DISCOURSE_SSO',ENABLE_DISCOURSE_SSO)
 DISCOURSE_BASE_URL = ENV_TOKENS.get('DISCOURSE_BASE_URL', None)
