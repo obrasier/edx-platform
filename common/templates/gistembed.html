@@ -1,0 +1,21 @@
+<%! from util.markup import ugettext as _ %>
+<!DOCTYPE html>
+<html>
+<title>MadMaker Gist iFrame2</title>
+<head>
+<script type="text/javascript" src="/static/js/jquery.min.js"></script>
+<script type="text/javascript" src="/static/js/gist-embed.min.js"></script>
+    <script>
+        $(document).ready(function(){
+                $("a").each(
+                        function(){
+                            $(this).attr('target','_blank');
+                            }
+                       )
+            });
+    </script>
+</head>
+<body>
+<code data-gist-id="${gist_id}"></code>
+</body>
+</html>

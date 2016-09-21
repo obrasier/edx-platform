@@ -29,6 +29,8 @@ urlpatterns = (
 # [MM START]
     url(r'^lookup$','student.views.lookup_school',name="lookup_school"),#NEW: serves the school database lookup
     url(r'^discourse/sso$','student.views.sso',name="discourse_sso"),
+    url(r'^codeframe/(?P<gist_id>.*)$','student.views.codeframe',name="codeframe"),
+    url(r'^gistembed/(?P<gist_id>.*)$','student.views.gistembed',name="gistembed"),
 # [MM END]
     url(r'^$', 'branding.views.index', name="root"),   # Main marketing page, or redirect to courseware
     url(r'^dashboard$', 'student.views.dashboard', name="dashboard"),

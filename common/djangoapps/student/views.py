@@ -2585,3 +2585,15 @@ def sso(request):
 
     url = '%s/session/sso_login' % settings.DISCOURSE_BASE_URL
     return HttpResponseRedirect('%s?%s' % (url, query_string))
+
+@login_required
+def codeframe(request,gist_id):
+    context = {}
+    context['gist_url'] = 'https://'+settings.SITE_NAME + '/gist/'+gist_id+".js"
+    return render_to_response('codeframe.html',context)
+
+@login_required
+def gistembed(request,gist_id):
+    context =  {}
+    context['gist_id']=gist_id
+    return render_to_response('gistembed.html',context)
