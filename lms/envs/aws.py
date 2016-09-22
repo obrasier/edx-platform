@@ -111,6 +111,15 @@ CELERYBEAT_SCHEDULE = {}  # For scheduling tasks, entries can be added to this d
 with open(CONFIG_ROOT / CONFIG_PREFIX + "env.json") as env_file:
     ENV_TOKENS = json.load(env_file)
 
+########################## TEACHER WHITE LISTING ##############################
+WHITELIST_FILE = ENV_TOKENS.get('TEACHER_WHITELIST_FILE',None)
+if WHITELIST_FILE:
+    if os.path.exists(WHITELIST_FILE):
+        with open(WHITELIST_FILE) as whitelist_file:
+            REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = whitelist_file.read().splitlines()
+    else:    
+        REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = ["teacher[0-9]*@example.com"]
+
 ################################### GITHUB PROXY ###############################
 ENABLE_GITHUB_GIST_PROXY =  ENV_TOKENS.get('ENABLE_GITHUB_GIST_PROXY',False)
 GITHUB_GIST_BASE_URL = ENV_TOKENS.get('GITHUB_GIST_BASE_URL', None)
