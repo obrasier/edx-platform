@@ -102,7 +102,13 @@ include_special_exams = settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
              </a>
           </li>
       % endfor
-      <%block name="extratabs" />
+      <%block name="extratabs">
+          <li>
+             <a href="${settings.DISCOURSE_BASE_URL| h}" target="_blank">
+                 Discussion
+             </a>
+          </li>
+      </%block>
     </ol>
   </div>
 </nav>
