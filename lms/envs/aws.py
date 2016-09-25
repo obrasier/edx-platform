@@ -111,6 +111,10 @@ CELERYBEAT_SCHEDULE = {}  # For scheduling tasks, entries can be added to this d
 with open(CONFIG_ROOT / CONFIG_PREFIX + "env.json") as env_file:
     ENV_TOKENS = json.load(env_file)
 
+#################################################################################
+#############################  MM NEW begin #####################################
+#################################################################################
+
 ########################## TEACHER WHITE LISTING ##############################
 WHITELIST_FILE = ENV_TOKENS.get('TEACHER_WHITELIST_FILE',None)
 if WHITELIST_FILE:
@@ -130,6 +134,10 @@ if ENABLE_GITHUB_GIST_PROXY:
 ################################### DISCOURSE SSO ##############################
 ENABLE_DISCOURSE_SSO = ENV_TOKENS.get('ENABLE_DISCOURSE_SSO',ENABLE_DISCOURSE_SSO)
 DISCOURSE_BASE_URL = ENV_TOKENS.get('DISCOURSE_BASE_URL', None)
+
+#################################################################################
+#############################  MM NEW end #######################################
+#################################################################################
 
 # STATIC_ROOT specifies the directory where static files are
 # collected
