@@ -795,7 +795,7 @@ class RegistrationView(APIView):
             terms_text = _(u"Terms of Service and Honour Code <i class=\"fa fa-external-link\" aria-hidden=\"true\"></i>")
 
         terms_link = u"<a href=\"{url}\" target=\"_blank\">{terms_text}</a>".format(
-            url=marketing_link("HONOR"),
+            url="/tos#honour",
             terms_text=terms_text
         )
 
