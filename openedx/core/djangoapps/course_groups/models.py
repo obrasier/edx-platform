@@ -102,7 +102,7 @@ class CohortMembership(models.Model):
         # This block will transactionally commit updates to CohortMembership and underlying course_user_groups.
         # Note the use of outer_atomic, which guarantees that operations are committed to the database on block exit.
         # If called from a view method, that method must be marked with @transaction.non_atomic_requests.
-        with outer_atomic(read_committed=True):
+        with transaction.atomic():
 
             saved_membership, created = CohortMembership.objects.select_for_update().get_or_create(
                 user__id=self.user.id,

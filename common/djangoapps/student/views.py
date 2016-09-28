@@ -1,6 +1,7 @@
 """
 Student Views
 """
+import traceback
 import datetime
 import logging
 import uuid
@@ -47,6 +48,8 @@ from social.exceptions import AuthException, AuthAlreadyAssociated
 
 from edxmako.shortcuts import render_to_response, render_to_string
 
+from openedx.core.djangoapps.course_groups.cohorts import get_cohort_by_name, add_user_to_cohort
+from openedx.core.djangoapps.course_groups.models import CourseUserGroup
 from course_modes.models import CourseMode
 from shoppingcart.api import order_history
 from student.models import (
@@ -1079,7 +1082,25 @@ def change_enrollment(request, check_access=True):
                     rolename = 'teacher'
                     course = get_course_by_id(course_id)
                     allow_access(course, user, rolename)
-            except Exception:  # pylint: disable=broad-except
+                    # if CohortManager has a cohort with course and cohort ="teacher"
+                    log.warning("we in E")
+                    try:
+                        log.warning("we in F")
+                        log.warning("courseid type: {course}".format(course=type(course_id)))
+                        cohort = get_cohort_by_name(course_id, 'Teachers') #raises DoesNotExist when not present
+                        log.warning("cohort type: {cohort}".format(cohort=type(cohort)))
+                        log.warning("we in G")
+                        with transaction.atomic():
+                            add_user_to_cohort(cohort,user.email)
+                        log.warning("we in H")
+                    except CourseUserGroup.DoesNotExist:
+                        log.warning("Cohort Teachers does not exist for auto teacher role access")
+                        log.warning("we in I")
+                        pass
+            except Exception,e:  # pylint: disable=broad-except
+                log.warning(Exception)
+                log.warning(e)
+                traceback.print_exc()
                 return HttpResponseBadRequest(_("Could not enroll"))
 
         # If we have more than one course mode or professional ed is enabled,

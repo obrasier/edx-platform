@@ -122,7 +122,9 @@ if WHITELIST_FILE:
         with open(WHITELIST_FILE) as whitelist_file:
             REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = whitelist_file.read().splitlines()
     else:    
-        REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = ["teacher[0-9]*@example.com"]
+        REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED = ENV_TOKENS.get('REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED',None)
+
+TEACHER_ROLE_COURSES = ENV_TOKENS.get('TEACHER_ROLE_COURSES',["course-v1:edX+DemoX+Demo_Course"])
 
 ################################### GITHUB PROXY ###############################
 ENABLE_GITHUB_GIST_PROXY =  ENV_TOKENS.get('ENABLE_GITHUB_GIST_PROXY',False)
