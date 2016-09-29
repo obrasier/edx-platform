@@ -2205,7 +2205,7 @@ class School(models.Model):
     """
     #This model contains school names and information
     """
-    acara_id = models.IntegerField(unique=True,primary_key=False)
+    acara_id = models.IntegerField(unique=True,primary_key=False,null=True)
 
     school_name = models.CharField(
         max_length=100,
