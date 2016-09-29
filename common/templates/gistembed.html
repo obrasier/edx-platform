@@ -16,6 +16,11 @@
     </script>
 </head>
 <body>
-<code data-gist-id="${gist_id}"></code>
+<code 
+    % for k,v in data_gist.items(): 
+        data-gist-${k} ="${v}"
+    % endfor 
+    >
+</code>
 </body>
 </html>

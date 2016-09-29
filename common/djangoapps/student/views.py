@@ -2616,5 +2616,13 @@ def codeframe(request,gist_id):
 @login_required
 def gistembed(request,gist_id):
     context =  {}
-    context['gist_id']=gist_id
+    q = ["file","line","hide-footer","hide-line-numbers","show-loading","show-spinner"]
+    data_gist = {}
+    data_gist['id']=gist_id
+    if request.method == "GET":
+        for k in q:
+            v = request.GET.get(k,None)
+            if v:
+                data_gist[k]=v
+    context['data_gist']=data_gist
     return render_to_response('gistembed.html',context)
