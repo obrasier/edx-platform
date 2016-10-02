@@ -1557,16 +1557,12 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
          
     if errors:
         raise ValidationError(errors)
-    
-        if not check_school_exists(teacher_form.cleaned_data["school_id"],teacher_form.cleaned_data["school"]):
-            try:
-                errors["school"].append("Check to make sure you've selected an existing school") # incase there are already field errors
-            except KeyError:
-                errors.update({"school":"Check to make sure you've selected an existing school"}) 
-    if errors:
-        raise ValidationError(errors)
 
-
+    if teacher_form:
+        school = check_school_exists(teacher_form.cleaned_data["school_id"],teacher_form.cleaned_data["school"])
+        if not school:
+            school = School.objects.create(school_name = teacher_form.cleaned_data["school"])
+        
     user = User(
         username=form.cleaned_data["username"],
         email=form.cleaned_data["email"],
@@ -1601,7 +1597,6 @@ def _do_create_account(form, custom_form=None,student_form=None,teacher_form=Non
                 student_profile.classSet.add(student_classset)
 
             if teacher_form:
-                school = School.objects.get(acara_id = teacher_form.cleaned_data["school_id"])
                 teacher_profile = TeacherProfile(
                     user = user,
                     school = school,

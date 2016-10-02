@@ -250,16 +250,16 @@ def check_classcode_exists(classcode):
 def check_school_exists(school_id,school_name):
     """
     Checks that the school exists and school_name and id match. Takes a string input. 
-
+    Returns None or School object
     """
-
-    if school_id is not None and School.objects.filter(acara_id=school_id).exists():
-        if str(School.objects.get(acara_id=school_id))==school_name:
-            return True
+    if school_id and School.objects.filter(acara_id=school_id).exists():
+        s = School.objects.get(acara_id=school_id)
+        if str(s)==school_name:
+            return s
         else:
-            return False
+            return None
     else:
-        return False
+        return None
 
 
 def search_school_details(query,max_results):

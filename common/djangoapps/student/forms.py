@@ -403,7 +403,7 @@ class TeacherRegistrationForm(forms.Form):
     
     school_id = forms.CharField(
         max_length=10,
-        required = True,
+        required = False,
         label= _("School ID"),
         validators = [RegexValidator(regex="^\d*$",message="School_id is given in an invalid format.")]
     )
@@ -475,7 +475,7 @@ class TextMultiField(forms.MultipleChoiceField):
     def clean(self, value):
         val = super(TextMultiField, self).clean(value)
         return ",".join(val)
-    
+
 class ClassSetForm(ModelForm):
     assessment = forms.TypedChoiceField(
                coerce=lambda x: x == 'True',
@@ -487,7 +487,7 @@ class ClassSetForm(ModelForm):
     no_of_students = forms.IntegerField(required=True, min_value=0)
     class Meta:
         model = ClassSet
-        
+
         fields = ['short_name','class_name','assessment','subject','grade','no_of_students']
         labels = {
             'short_name': _('Short Name'),

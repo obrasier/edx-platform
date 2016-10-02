@@ -30,7 +30,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.db import models, IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver, Signal
 from django.core.exceptions import ObjectDoesNotExist
@@ -2253,6 +2253,20 @@ class School(models.Model):
     def __unicode__(self):              # __str__ on Python 3
         display = [unicode(self.school_name),unicode(self.suburb),unicode(self.state),unicode(self.postcode)]
         return ', '.join(display)
+
+    def save(self, *args, **kwargs):
+        """
+        Check that acara id is not blank. If blank, auto-assign.
+        """
+        if self.acara_id is None:
+            # find the highest value in the acara_id
+            result = School.objects.filter(acara_id__lte=999).aggregate(Max('acara_id'))
+            if result['acara_id__max']:
+                self.acara_id = result['acara_id__max'] + 1 #should grow from 101
+            else:
+                self.acara_id = 100 #should only run once
+        super(School, self).save(*args, **kwargs)
+
 
 class SchoolProfile(models.Model):
 
