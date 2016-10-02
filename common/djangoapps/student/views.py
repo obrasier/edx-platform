@@ -1097,6 +1097,9 @@ def change_enrollment(request, check_access=True):
                         log.warning("Cohort Teachers does not exist for auto teacher role access")
                         log.warning("we in I")
                         pass
+                    except ValueError,e:
+                        log.warning(e)
+                        pass
             except Exception,e:  # pylint: disable=broad-except
                 log.warning(Exception)
                 log.warning(e)
