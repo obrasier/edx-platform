@@ -15,6 +15,7 @@
                 <i class="fa fa-chevron-down" aria-hidden="true" style="float: right"></i>
         </div>
         <div class="teacher-dashboard-class-body" style="display:none;">
+        <h2 class="summary-title">Class Details</h2>
             <ul>
                 <li> Grade:&nbsp; ${c["grade"]}
                 <li> Subject:&nbsp; ${c["subject"]}
@@ -24,6 +25,7 @@
                 <li> Inactive Accounts: &nbsp;${c["total_accounts"]-c["active_accounts"]}
                 <li> Use of Assessment: &nbsp;${c["assessment"]}
             </ul>
+            <div class="my-classes-instructions">Click on the "My Students" tab to view/add students to your class.</div>
         </div>
         <div class="teacher-dashboard-class-timetable">
         </div>
@@ -110,6 +112,14 @@ if(document.getElementsByClassName("empty-data").length > 0){
 </script>
 
 <style>
+    .summary-title {
+        margin-left: 20px;
+        margin-top: 20px;
+    }
+    .my-classes-instructions{
+        text-align: center;
+        margin: 10px;
+    }
     .errorlist {color: red;
                 margin-left: -30pt;
                 font-size: 10pt;

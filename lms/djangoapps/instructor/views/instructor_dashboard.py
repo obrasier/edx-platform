@@ -230,8 +230,11 @@ def _section_my_classes(course, access, user):
         cdict = {}
         cdict['total_accounts']=get_class_size(c)
         cdict['active_accounts']=get_class_size(c,True)
-        cdict.update(model_to_dict(c,fields=['short_name','class_name','class_code','grade','subject','no_of_students' ,'assessment']))
+        cdict.update(model_to_dict(c,fields=['short_name','class_name','class_code','grade','no_of_students' ,'assessment']))
         cdict['school_name'] = c.school.__unicode__()
+        subjects = dict(ClassSetForm.SUBJECTS)
+        cdict['subject'] = subjects[c.subject]
+        
         classes_info.append(cdict)
     
     section_data['my_classes'] = classes_info
