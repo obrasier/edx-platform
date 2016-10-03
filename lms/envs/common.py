@@ -44,6 +44,10 @@ from xmodule.modulestore.edit_info import EditInfoMixin
 from xmodule.mixin import LicenseMixin
 from lms.djangoapps.lms_xblock.mixin import LmsBlockMixin
 
+################################### TAWK ###############################
+TAWK_PROXY = False
+TAWK_SRC = ""
+CHAT_SRC = ""
 ################################### GITHUB PROXY ###############################
 ENABLE_GITHUB_GIST_PROXY = False
 GITHUB_GIST_BASE_URL = "https://gist.github.com/edx/"

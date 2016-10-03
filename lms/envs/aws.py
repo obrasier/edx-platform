@@ -115,6 +115,10 @@ with open(CONFIG_ROOT / CONFIG_PREFIX + "env.json") as env_file:
 #############################  MM NEW begin #####################################
 #################################################################################
 
+########################## TAWK  ##############################
+TAWK_SRC = ENV_TOKENS.get('TAWK_SRC', "")
+TAWK_PROXY = ENV_TOKENS.get('TAWK_PROXY',"")
+CHAT_SRC = TAWK_PROXY + TAWK_SRC
 ########################## TEACHER WHITE LISTING ##############################
 WHITELIST_FILE = ENV_TOKENS.get('TEACHER_WHITELIST_FILE',None)
 if WHITELIST_FILE:

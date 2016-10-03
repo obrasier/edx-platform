@@ -5,6 +5,9 @@
   from branding.api import get_footer
 %>
 <% footer = get_footer(is_secure=is_secure) %>
+
+    
+
 <%namespace name='static' file='static_content.html'/>
 
 <div class="wrapper wrapper-footer">
@@ -82,3 +85,25 @@
     <link rel="stylesheet" type="text/css" href="${url}"></link>
   % endfor
 % endif
+
+<!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+
+    % if user.is_authenticated():
+
+        Tawk_API.visitor = {
+            name : "${user.first_name}",
+            email: "${user.email}",
+        };
+    % endif
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='${settings.CHAT_SRC}';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
