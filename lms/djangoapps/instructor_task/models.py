@@ -360,7 +360,7 @@ class LocalFSReportStore(ReportStore):
 
     def path_to(self, course_id, filename):
         """Return the full path to a given file for a given course."""
-        return os.path.join(self.root_path, urllib.quote(course_id.to_deprecated_string(), safe=''), filename)
+        return os.path.join(self.root_path, re.sub('[^a-zA-Z0-9_]','_',course_id.to_deprecated_string()), filename)
 
     def store(self, course_id, filename, buff, config=None):  # pylint: disable=unused-argument
         """
@@ -403,6 +403,6 @@ class LocalFSReportStore(ReportStore):
         files.sort(key=lambda (filename, full_path): os.path.getmtime(full_path), reverse=True)
 
         return [
-            (filename, ("file://" + urllib.quote(full_path)))
+            (filename, ("/grades" + re.sub(self.root_path,'',urllib.quote(full_path))))
             for filename, full_path in files
         ]
