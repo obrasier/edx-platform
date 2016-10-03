@@ -1,5 +1,7 @@
 <%! from django.utils.translation import ugettext as _ %>
 <%page args="section_data"/>
+<% class_form = section_data['class_set_form'] %>
+
 <div class="teacher-dashboard-class-view">
     % if len(section_data["my_classes"])<1:
         <div class="empty-data">You have no classes.</div>
@@ -12,15 +14,15 @@
                 ${c["class_code"]}: &nbsp;${c["class_name"]}&nbsp; ( ${c["short_name"]} )
                 <i class="fa fa-chevron-down" aria-hidden="true" style="float: right"></i>
         </div>
-        <div class="teacher-dashboard-class-body" style="display:none">
+        <div class="teacher-dashboard-class-body" style="display:none;">
             <ul>
                 <li> Grade:&nbsp; ${c["grade"]}
                 <li> Subject:&nbsp; ${c["subject"]}
                 <li> School:&nbsp;${c["school_name"]}
-                <li> Number Of Students:&nbsp;${c["no_of_students"]}
+                <li> Expected Number of Students:&nbsp;${c["no_of_students"]}
                 <li> Active Accounts: &nbsp;${c["active_accounts"]}
                 <li> Inactive Accounts: &nbsp;${c["total_accounts"]-c["active_accounts"]}
-                <li> Assessment: &nbsp;${c["assessment"]}
+                <li> Use of Assessment: &nbsp;${c["assessment"]}
             </ul>
         </div>
         <div class="teacher-dashboard-class-timetable">
@@ -34,19 +36,43 @@
     <button id="add-button" style="width: 30%; margin: 0 auto; display: inline-block"><i class='fa fa-plus-circle' aria-hidden='true'></i> Create Class</button>
 </div>
 </div>
-<div id="teacher-dashboard-class-form" style="display:none">
+
+<div id="teacher-dashboard-class-form" style="display:none;">
     <div id="new-class-set-form" class="form-wrapper">
             <div class="section-title-form">
                 <h2>
                     <span class="text">Create a new class</span>
                 </h2>
             </div>
+
         <form id="create-class-set" action="teacher#view-my_classes" method="post">
             <div id="form-errors">
+                ${ class_form.non_field_errors() }
             </div>
             <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
-        ${ section_data['class_set_form'] }
-        <br><span class="helptext">The total number of students that will participate in the class.</span>
+
+<table class="class_set_form_table">
+<tbody>
+% for field in class_form:
+    <tr>
+        <th>
+            <p> ${ field.label_tag() }
+            </p>
+        </th>
+        <td>
+            ${ field }
+        </td>
+        <td class="td-helptext">
+            % if field.help_text:
+                ${ field.help_text }
+            % endif
+            <p> ${ field.errors } </p>
+        </td>
+    </tr>
+% endfor
+</tbody>
+</table>
+
             <p>
                 <input type="submit" value="Submit" />
             </p>
@@ -71,22 +97,27 @@ $(".teacher-dashboard-class-header").click(function () {
     $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
 });
 
-if(document.getElementsByClassName("errorlist")!=null){
+
+if(document.getElementsByClassName("errorlist").length >0){
     var div = document.getElementById('teacher-dashboard-class-form');
     div.style.display='block';
 }
+if(document.getElementsByClassName("empty-data").length > 0){
+    var div = document.getElementById('teacher-dashboard-class-form');
+    div.style.display='block';
+}
+
 </script>
 
 <style>
     .errorlist {color: red;
-                margin-top: -5pt;
                 margin-left: -30pt;
                 font-size: 10pt;
                 }
     ul{list-style-type: none;}
-    .helptext{font-size: 10pt;
+    .td-helptext{font-size: 12pt;
               color: #666; 
-              font-style: italic; }
+    }
     form label{padding-top: 8pt;}
     .section-title-form{padding-top:20pt;padding-left:15pt;}
     .form-wrapper{background-color:#EEE;
@@ -108,5 +139,24 @@ if(document.getElementsByClassName("errorlist")!=null){
     .teacher-dashboard-class-item{
         margin-bottom: 30pt;
         background-color: #e6eef7;
+    }
+    table, th, td {
+        border: 0px solid black;
+    }
+    th, td {
+        padding: 20px;
+        text-align: left;
+    }
+    tbody > tr {
+       height: 40px;
+    }
+    tbody > tr > td {vertical-align: middle;}
+    tbody > tr > th {margin-right: 10px;}
+    td > input, select {
+        width: 100%;
+        size: 12pt;
+    }
+    td > select {
+        height: 120px;
     }
 </style>

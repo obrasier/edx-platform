@@ -2509,12 +2509,12 @@ class ClassSet(RandomPrimaryIdModel):
     #objects = ClassSetManager()             #encrypted pk for sharing
     created_by = models.ForeignKey(User,null=False,related_name='classes_created')
     teacher = models.ForeignKey(User,null=False, related_name='classes_taught')
-    short_name =  models.CharField(max_length=12,null=True)         #for quick reference for teacher dashboard display
-    class_name = models.CharField(max_length=50,null=True)        #unique for public display
+    short_name =  models.CharField(max_length=32,null=True)         #for quick reference for teacher dashboard display
+    class_name = models.CharField(max_length=64,null=True)        #unique for public display
     school = models.ForeignKey('School',null=False)
     
     course_id = CourseKeyField(db_index=True, max_length=255, blank=True) 
-    grade = models.CharField(max_length=12,null=True)
+    grade = models.CharField(max_length=32,null=True)
     subject = models.CharField(max_length=12,null=True)
     assessment = models.BooleanField(default=False)     #for survey purposes
     no_of_students = models.IntegerField(null=True)

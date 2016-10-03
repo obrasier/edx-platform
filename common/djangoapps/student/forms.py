@@ -480,9 +480,10 @@ class ClassSetForm(ModelForm):
     assessment = forms.TypedChoiceField(
                coerce=lambda x: x == 'True',
                choices=((True, 'Yes'), (False, 'No')),
-               widget=forms.RadioSelect
+               widget=forms.RadioSelect,
+               help_text = "Will you be using the course grades as part of your class assessment rubric?",
             )
-    grade = TextMultiField(choices = StudentProfile.SCHOOL_GRADES)
+    grade = TextMultiField(choices = StudentProfile.SCHOOL_GRADES, help_text='Hold down Ctrl or cmd to select multiple grades.')
     SUBJECTS = (
         ('S','Science'),
         ('M','Maths'),
@@ -490,8 +491,9 @@ class ClassSetForm(ModelForm):
         ('C','Club'),
         ('O','Other'),
     ) 
-    subject = forms.ChoiceField(choices= SUBJECTS)
-    no_of_students = forms.IntegerField(required=True, min_value=0)
+    subject = forms.ChoiceField(choices= SUBJECTS, help_text="Select the closest subject area your class is taught for, or 'Other'")
+    no_of_students = forms.IntegerField(required=True, min_value=0,help_text="The number of students in your class. (This can be an estimate)")
+
     class Meta:
         model = ClassSet
 
@@ -499,13 +501,13 @@ class ClassSetForm(ModelForm):
         labels = {
             'short_name': _('Short Name'),
             'class_name':_('Class Team Name'),
-            'assessment':_('Will You be using the grades in this course for your teaching program''s assessment?'),
+            'assessment':_('Assessment Use'),
             'subs':_('Subject'),
-            'no_of_students': _('Anticipated number of students in class'),
+            'no_of_students': _('Anticipated students'),
         }
         help_texts = {
             'short_name': _('A quick personal reference name.'),
-            'class_name':_('A team name for your class. This will be displayed your student\'s profiles'),
+            'class_name':_('A team name for your class. This will be visible by your students.'),
             'assessment':_('Will you be using the course grades as part of your teaching rubric?'),
             'grade': _('Hold down Ctrl or cmd to select multiple grades'),
             'no_of_students': _('The size of your class (not necessarily how many students have signed up with accounts).'),

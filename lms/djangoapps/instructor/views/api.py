@@ -64,7 +64,8 @@ from student.models import (
     UserProfile, Registration, EntranceExamConfiguration,
     ManualEnrollmentAudit, UNENROLLED_TO_ALLOWEDTOENROLL, ALLOWEDTOENROLL_TO_ENROLLED,
     ENROLLED_TO_ENROLLED, ENROLLED_TO_UNENROLLED, UNENROLLED_TO_ENROLLED,
-    UNENROLLED_TO_UNENROLLED, ALLOWEDTOENROLL_TO_UNENROLLED, DEFAULT_TRANSITION_STATE, ClassSet
+    UNENROLLED_TO_UNENROLLED, ALLOWEDTOENROLL_TO_UNENROLLED, DEFAULT_TRANSITION_STATE, ClassSet,
+    StudentProfile
 )
 import instructor_task.api
 from instructor_task.api_helper import AlreadyRunningError
@@ -939,7 +940,7 @@ def modify_access(request, course_id):
 
 # MM NEW
 @ensure_csrf_cookie
-@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+#@cache_control(no_cache=True, no_store=True, must_revalidate=True)
 #@require_level('teacher')
 @require_post_params('unique_student_identifier', 'rolename')
 def _add_to_class_code(request, course_id):
@@ -959,12 +960,12 @@ def _add_to_class_code(request, course_id):
     is_white_label = CourseMode.is_white_label(course_id)
     action = request.POST.get('action')
     class_code= request.POST.get('rolename')
-    print 'class code' + class_code
+    print 'class code: ' + class_code
     try:
         class_set = ClassSet.objects.get(class_code=class_code)
     except ClassSet.DoesNotExist:
         print "Class Does Not Exist"
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest("There's an error with your class. We cannot seem to find it. Contact the site's admin team.")
     
     course = get_course_with_access(
         request.user, 'teacher', course_id, depth=None
@@ -978,7 +979,10 @@ def _add_to_class_code(request, course_id):
     enrollment_obj = None
     state_transition = DEFAULT_TRANSITION_STATE
 
-    results = []
+    results = {}
+    results['success'] = []
+    results['error'] = []
+    returned=[]
     for identifier in identifiers:
         # First try to get a user object from the identifer
         user = None
@@ -988,31 +992,32 @@ def _add_to_class_code(request, course_id):
             user = get_student_from_identifier(identifier)
         except User.DoesNotExist:
             email = identifier
-            response_payload = _invite_with_class_code(class_code,email,request.user,course_id,request)
+            success = _invite_with_class_code(class_code,email,request.user,course_id,request)
             # TODO: handle response payload
         except Exception as exc:  # pylint: disable=broad-except
             # catch and log any exceptions
             # so that one error doesn't cause a 500.
             log.exception(u"Error while #{}ing student")
             log.exception(exc)
-            results.append({
-                'identifier': identifier,
-                'error': True,
-            })
+            success = False
         else:
             email = user.email
             language = get_user_email_language(user)
             success = _add_student_to_class_set(class_set,user)
-            results.append({
-                'identifier': identifier,
-                'error': not success,
-            })
+        if success:
+            returned.append(('success',identifier))
+        else:
+            returned.append(('error',identifier))
             # TODO: handle success   
-
+    for k,v in returned:
+        results[k].append(v)
     response_payload = {
         'action': action,
+        'rolename': class_code,
         'results': results,
+        'success': len(results['error']) ==0,
     }
+    print response_payload
     return JsonResponse(response_payload)
 
 
@@ -1085,7 +1090,8 @@ def modify_students_of_class_code(request, course_id):
             'action': action,
             'success': success,
         })
-
+    else:
+        response_payload = {}
     return JsonResponse(response_payload)
 
 def _add_student_to_class_set(class_set,student):
@@ -1099,6 +1105,8 @@ def _add_student_to_class_set(class_set,student):
         try:
             class_set.studentprofile_set.add(student.studentprofile)
         except StudentProfile.DoesNotExist:
+            return False
+        except IntegrityError:
             return False
         try:
             email_params['message']='classcode_enroll'
@@ -1162,8 +1170,7 @@ def _invite_with_class_code(class_code,identifier,user,course_id,request):
         'action': 'allow',
         'success': success,
     }
-    
-    return response_payload
+    return success
 
 # MM NEW
 @ensure_csrf_cookie

@@ -65,7 +65,7 @@ class MemberListWidget
 
 
 class AuthListWidget extends MemberListWidget
-  constructor: ($container, @rolename, @$error_section) ->
+  constructor: ($container, @rolename, @$error_section, @$success_section) ->
     super $container,
       title: $container.data 'display-name'
       info: $container.data 'info-text'
@@ -138,6 +138,12 @@ class AuthListWidget extends MemberListWidget
   # set error display
   show_errors: (msg) -> @$error_section?.text msg
 
+  # clear success display
+  clear_success: -> @$success_section?.text ''
+
+  # set success display
+  show_success: (msg) -> @$success_section?.text msg
+
   # send ajax request to list members
   # `cb` is called with cb(error, member_list)
   get_member_list: (cb) ->
@@ -172,7 +178,22 @@ class AuthListWidget extends MemberListWidget
 
   member_response: (data) ->
     @clear_errors()
+    @clear_success()
     @clear_input()
+    if data.action == 'revoke'
+      if data.success
+        msg = gettext("Successfully removed the following user: <%= identifier %> from class <%= classcode %>.")
+        @show_success _.template(msg, {identifier: data.unique_student_identifier, classcode: data.rolename})
+      else 
+        msg = gettext("Could not remove the following user: <%= identifier %> from class <%= classcode %>.")
+        @show_errors _.template(msg, {identifier: data.unique_student_identifier, classcode: data.rolename})
+    else if data.action == 'allow'
+      if data.results.success.length > 0
+        msg = gettext("Successfully added/invited the following users: <%= identifier %> to class <%= classcode %>.")
+        @show_success _.template(msg, {identifier: data.results.success.join(', '), classcode: data.rolename})
+      if !data.success
+        msg = gettext("Could not add/invite the following users: <%= identifier %> to class <%= classcode %>.")
+        @show_errors _.template(msg, {identifier: data.results.error.join(', '), classcode: data.rolename})
     if data.userDoesNotExist
       msg = gettext("Could not find a user with username or email address '<%= identifier %>'.")
       @show_errors _.template(msg, {identifier: data.unique_student_identifier})
@@ -711,12 +732,13 @@ class Membership
     @$list_selector = @$section.find 'select#member-lists-selector'
     @$auth_list_containers = @$section.find '.auth-list-container'
     @$auth_list_errors = @$section.find '.member-lists-management .request-response-error'
+    @$auth_list_success = @$section.find '.member-lists-management .request-response-success'
 
     # initialize & store AuthList subsections
     # one for each .auth-list-container in the section.
     @auth_lists = _.map (@$auth_list_containers), (auth_list_container) =>
       rolename = $(auth_list_container).data 'rolename'
-      new AuthListWidget $(auth_list_container), rolename, @$auth_list_errors
+      new AuthListWidget $(auth_list_container), rolename, @$auth_list_errors, @$auth_list_success
 
     # populate selector
     @$list_selector.empty()

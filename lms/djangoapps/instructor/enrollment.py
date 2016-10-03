@@ -419,7 +419,7 @@ def send_mail_to_student(student, param_dict, language=None):
             settings.DEFAULT_FROM_EMAIL
         )
 
-        send_mail(subject, message, from_address, [student], fail_silently=False)
+        return send_mail(subject, message, from_address, [student], fail_silently=False)
 
 
 def render_message_to_string(subject_template, message_template, param_dict, language=None):
