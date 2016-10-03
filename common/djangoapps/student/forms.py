@@ -483,7 +483,14 @@ class ClassSetForm(ModelForm):
                widget=forms.RadioSelect
             )
     grade = TextMultiField(choices = StudentProfile.SCHOOL_GRADES)
-    subject = forms.ChoiceField(choices= StudentProfile.SUBJECTS)
+    SUBJECTS = (
+        ('S','Science'),
+        ('M','Maths'),
+        ('I','ICT/TAS'),
+        ('C','Club'),
+        ('O','Other'),
+    ) 
+    subject = forms.ChoiceField(choices= SUBJECTS)
     no_of_students = forms.IntegerField(required=True, min_value=0)
     class Meta:
         model = ClassSet
@@ -514,10 +521,17 @@ class ClassSetForm(ModelForm):
                 'required': _("Enter the number of students in your class. If you are uncertain, you can estimate and change this field later."),
             },
         }
+        SUBJECTS = (
+            ('S','Science'),
+            ('M','Maths'),
+            ('I','ICT/TAS'),
+            ('C','Club'),
+            ('O','Other'),
+        ) 
         widgets = {
             'short_name': forms.TextInput(attrs = {'placeholder': 'e.g. Yr09LineB'}),
             'class_name': forms.TextInput(attrs = {'placeholder': 'e.g. The Mighty Ducks'}),
-            'subject': forms.Select(choices=StudentProfile.SUBJECTS),
+            'subject': forms.Select(choices=SUBJECTS),
         }
 
 class OtherSubjectForm(ModelForm):
