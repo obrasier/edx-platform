@@ -1082,6 +1082,7 @@ def change_enrollment(request, check_access=True):
                     rolename = 'teacher'
                     course = get_course_by_id(course_id)
                     allow_access(course, user, rolename)
+                    allow_access(course, user, 'beta')
                     # if CohortManager has a cohort with course and cohort ="teacher"
                     log.warning("we in E")
                     try:
