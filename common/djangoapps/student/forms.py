@@ -487,12 +487,14 @@ class ClassSetForm(ModelForm):
     SUBJECTS = (
         ('S','Science'),
         ('M','Maths'),
-        ('I','ICT/TAS'),
+        ('I','ICT'),
+        ('T','TAS'),
+        ('D','Digital Technologies'),
         ('C','Club'),
         ('O','Other'),
     ) 
     subject = forms.ChoiceField(choices= SUBJECTS, help_text="Select the closest subject area your class is taught for, or 'Other'")
-    no_of_students = forms.IntegerField(required=True, min_value=0,help_text="The number of students in your class. (This can be an estimate)")
+    no_of_students = forms.IntegerField(required=True, min_value=0,help_text="The number of students in your class. Please try and be accurate because we will use these numbers to estimate the total number of student participants")
 
     class Meta:
         model = ClassSet
