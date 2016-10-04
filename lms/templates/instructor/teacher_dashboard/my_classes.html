@@ -61,7 +61,7 @@
             <p> ${ field.label_tag() }
             </p>
         </th>
-        <td>
+        <td class="td-field">
             ${ field }
         </td>
         <td class="td-helptext">
@@ -168,5 +168,8 @@ if(document.getElementsByClassName("empty-data").length > 0){
     }
     td > select {
         height: 120px;
+    }
+    .td-field{
+        width: 250px;    
     }
 </style>
