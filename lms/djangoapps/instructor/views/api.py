@@ -111,6 +111,8 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
+from openedx.core.djangoapps.course_groups.models import CourseUserGroup
+from openedx.core.djangoapps.course_groups.cohorts import get_cohort_by_name, add_user_to_cohort, remove_user_from_cohort
 from student.helpers import is_teacher
 from instructor.utils import get_users_by_class_set
 log = logging.getLogger(__name__)
@@ -923,8 +925,36 @@ def modify_access(request, course_id):
 
     if action == 'allow':
         allow_access(course, user, rolename)
+        if rolename=='teacher': #all teachers get beta access
+            log.warning("Manually adding {email} as teacher/beta/Teachers Cohort".format(email=user.email))
+            allow_access(course, user, 'beta')
+            # if CohortManager has a cohort with course and cohort ="teacher"
+            try:
+                cohort = get_cohort_by_name(course_id, 'Teachers') #raises DoesNotExist when not present
+                with transaction.atomic():
+                    add_user_to_cohort(cohort,user.email)
+            except CourseUserGroup.DoesNotExist:
+                log.warning("Cohort Teachers does not exist for auto teacher role access")
+                pass
+            except ValueError,e:
+                log.warning(e)
+                pass
     elif action == 'revoke':
         revoke_access(course, user, rolename)
+        if rolename=='teacher':
+            log.warning("Manually removing {email} as teacher/beta/Teachers Cohort".format(email=user.email))
+            revoke_access(course,user, 'beta')
+            try:
+                cohort = get_cohort_by_name(course_id, 'Teachers') #raises DoesNotExist when not present
+                with transaction.atomic():
+                  remove_user_from_cohort(cohort,user.email)
+            except CourseUserGroup.DoesNotExist:
+                log.warning("Cohort Teachers does not exist for auto teacher role access")
+                pass
+            except ValueError,e:
+                log.warning(e)
+                pass
+            
     else:
         return HttpResponseBadRequest(strip_tags(
             "unrecognized action '{}'".format(action)
