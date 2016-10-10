@@ -1025,6 +1025,7 @@ def change_enrollment(request, check_access=True):
     auto_teacher_role_access = False
     if settings.TEACHER_ROLE_COURSES is not None:
         log.warning("we in A")
+        log.warning("Enrolling: {email}".format(email=user.email))
         if request.POST.get("course_id") in settings.TEACHER_ROLE_COURSES:
             log.warning("we in B")
             if settings.REGISTRATION_TEACHER_EMAIL_PATTERNS_ALLOWED is not None:
@@ -1036,6 +1037,8 @@ def change_enrollment(request, check_access=True):
                 if any(re.match(pattern + "$", user.email) for pattern in allowed_patterns):
                     auto_teacher_role_access = is_teacher(user) # so long as there is a teacher profile
                     log.warning("we in D")
+                elif is_teacher(user):
+                    log.warning("Whitelist Warning: {email} has teacher profile but was not found on whitelist. Email: {email}. Course_id: {cid}".format(email=user.email, cid=request.POST.get("course_id")))
 
     if action == "enroll":
         # Make sure the course exists
