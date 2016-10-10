@@ -352,3 +352,28 @@ def get_my_classes(user, course_id=None):
         return user.classes_taught.filter(course_id=course_id)
     else:
         return user.classes_taught.all()
+
+def get_student_classes(user, course_id=None):
+    """
+    Returns a list of classes student belongs to, either filtered by course or not.
+    Returns empty list if user has no student profile
+    """
+    if is_student(user):
+        sp = user.studentprofile
+        if course_id:
+            c_query = sp.classSet.filter(course_id=course_id)
+        else:
+            c_query = sp.classSet.all()
+        return list(c_query)
+    else:
+        return []
+
+def get_student_class_info(user,course_id=None):
+    """
+    Returns list of dictionaries of class info
+    """
+    c_list = get_student_classes(user,course_id)
+    if c_list:
+        return [{'class_code':c.class_code,'school':c.school,'teacher_name':c.teacher.first_name+' '+c.teacher.last_name,'teacher_gender':c.teacher.profile.gender,'teacher_email':c.teacher.email} for c in c_list]
+    else:
+        return None
