@@ -2520,7 +2520,8 @@ class ClassSet(RandomPrimaryIdModel):
     no_of_students = models.IntegerField(null=True)
     
     def __unicode__(self):              # __str__ on Python 3
-        return self.short_name
+        display = [unicode(self.class_code),unicode(self.teacher.email),unicode(self.school)]
+        return ', '.join(display)
 
     def size(self, is_active=False):
         if is_active == False:

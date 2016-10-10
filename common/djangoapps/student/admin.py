@@ -164,13 +164,22 @@ class UserProfileAdmin(admin.ModelAdmin):
         model = UserProfile
 
 class StudentProfileAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('__unicode__','user')
+    search_fields = ('user__first_name','user__last_name','user__email','user__username')
+    readonly_fields = ('user',)
+    raw_id_fields = ('classSet',)
 
 class TeacherProfileAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('user',)
+    search_fields = ('user__first_name','user__last_name','user__email','user__username')
+    readonly_fields = ('user',)
+    raw_id_fields = ('school',)
 
 class ClassSetAdmin(admin.ModelAdmin):
-    readonly_fields=('class_code',)
+    list_display = ('__unicode__','teacher')
+    search_fields = ('class_code', 'school__school_name','teacher__email','teacher__first_name','teacher__last_name')
+    readonly_fields=('class_code','created_by')
+    raw_id_fields = ('teacher','school')
 
 class SchoolAdmin(admin.ModelAdmin):
     pass
