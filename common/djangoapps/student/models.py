@@ -2201,6 +2201,10 @@ class TeacherProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def __unicode__(self):
+        display = [unicode(self.user.username),unicode(self.user.email), unicode(self.user.first_name+' '+self.user.last_name)]
+        return ', '.join(display)
+    
 class School(models.Model):
     """
     #This model contains school names and information

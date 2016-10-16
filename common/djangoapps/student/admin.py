@@ -170,7 +170,6 @@ class StudentProfileAdmin(admin.ModelAdmin):
     raw_id_fields = ('classSet',)
 
 class TeacherProfileAdmin(admin.ModelAdmin):
-    list_display = ('user',)
     search_fields = ('user__first_name','user__last_name','user__email','user__username')
     readonly_fields = ('user',)
     raw_id_fields = ('school',)
@@ -182,6 +181,8 @@ class ClassSetAdmin(admin.ModelAdmin):
     raw_id_fields = ('teacher','school')
 
 class SchoolAdmin(admin.ModelAdmin):
+    list_display = ('__unicode__',)
+    search_fields = ('school_name','acara_id','postcode','state','suburb')
     pass
 
 class ClassTimeAdmin(admin.ModelAdmin):
