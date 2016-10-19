@@ -51,13 +51,18 @@ from util.date_utils import get_default_time_display
 from class_dashboard.dashboard_data import get_section_display_name, get_array_section_has_problem
 from .tools import get_units_with_due_date, title_or_url, bulk_email_is_enabled_for_course
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
-
+from .tools import get_student_from_identifier
 from student.forms import ClassSetForm
 from django.forms.models import model_to_dict
 from student.helpers import is_teacher, get_my_classes, get_class_size
 from student.models import ClassSet
 
 from instructor.utils import get_class_codes_of_teacher
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.clickjacking import xframe_options_exempt
+
+from django.contrib.auth.models import User
+from student.helpers import get_my_classes, get_class_size, is_teacher, is_student, get_student_class_info
 
 log = logging.getLogger(__name__)
 
@@ -909,3 +914,56 @@ def _section_metrics(course, access):
         'post_metrics_data_csv_url': reverse('post_metrics_data_csv'),
     }
     return section_data
+
+@xframe_options_exempt
+@staff_member_required
+def tawk_admin(request):
+    context = {}
+    return render_to_response('instructor/tawk_admin.html', context)
+
+def get_user_school_summary(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return HttpResponseForbidden()
+
+    identifier = request.GET.get("identifier")
+    try:
+        student = get_student_from_identifier(identifier)
+        response = {"success": True,
+                    "data" : _get_user_info(student)}
+    except User.DoesNotExist:
+        response = {"success": False,
+                    "msg": "No user found"}
+    return JsonResponse(response)
+
+def _get_user_info(user):
+    response = {}
+    response["username"]= user.username
+    response["email"]= user.email
+    response["gender"]= user.profile.gender
+    response["first_name"]= user.first_name
+    #add first name, username, email, gender
+    if is_teacher(user):
+        #account type
+        #show school
+        response["last_name"]= user.last_name
+        response["user_type"] = "teacher"
+        response["school"] = user.teacherprofile.school.__unicode__()
+        response["classes"] = []
+        classes = get_my_classes(user)
+        #show classes by classcode and how many students in each
+        for c in classes:
+            c_dict = {}
+            c_dict["class_code"]= c.class_code
+            c_dict["size"]= get_class_size(c,is_active=True)
+            response["classes"].append(c_dict)
+        
+    #if user has studentprofile
+    elif is_student(user):
+        response["user_type"] = "student"
+        response["grade"] = user.studentprofile.school_grade
+        #account type
+        classes = get_student_class_info(user)
+        if not classes:
+            classes = "Orphaned account. This student has no class"
+        response["classes"] = classes
+    return response   

@@ -27,6 +27,8 @@ if settings.DEBUG or settings.FEATURES.get('ENABLE_DJANGO_ADMIN_SITE'):
 urlpatterns = (
     '',
 # [MM START]
+    url(r'^tawk_admin/get_user_school_summary$','instructor.views.instructor_dashboard.get_user_school_summary',name="get_user_school_summary"),#NEW: tawk dash
+    url(r'^tawk_admin$','instructor.views.instructor_dashboard.tawk_admin',name="tawk_admin)"),#NEW: tawk dash
     url(r'^lookup$','student.views.lookup_school',name="lookup_school"),#NEW: serves the school database lookup
     url(r'^discourse/sso$','student.views.sso',name="discourse_sso"),
     url(r'^codeframe/(?P<gist_id>.*)$','student.views.codeframe',name="codeframe"),
@@ -111,6 +113,8 @@ urlpatterns = (
     url(r'^api/credit/', include('openedx.core.djangoapps.credit.urls', app_name="credit", namespace='credit')),
     url(r'^rss_proxy/', include('rss_proxy.urls', namespace='rss_proxy')),
 )
+
+
 if settings.ENABLE_GITHUB_GIST_PROXY:
     urlpatterns += (
 # makes a proxy pathway to gist site

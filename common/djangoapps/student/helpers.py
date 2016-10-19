@@ -374,6 +374,6 @@ def get_student_class_info(user,course_id=None):
     """
     c_list = get_student_classes(user,course_id)
     if c_list:
-        return [{'class_code':c.class_code,'school':c.school,'teacher_name':c.teacher.first_name+' '+c.teacher.last_name,'teacher_gender':c.teacher.profile.gender,'teacher_email':c.teacher.email} for c in c_list]
+        return [{'class_code':c.class_code,'school':c.school.__unicode__(),'teacher_name':c.teacher.first_name+' '+c.teacher.last_name,'teacher_gender':c.teacher.profile.gender,'teacher_email':c.teacher.email} for c in c_list]
     else:
         return None

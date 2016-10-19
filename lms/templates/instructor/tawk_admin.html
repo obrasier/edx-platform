@@ -1,0 +1,208 @@
+<html>
+<head>
+    <link rel="stylesheet" href="/static/css/chat-toolbar.css" type="text/css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <style>
+        iframe{
+            border: 0;
+            width: 98%;
+        }
+        #ChatSideBar, #ChatSearchBar{
+            background: #333;
+            float: right;
+            position: fixed;
+            right: 0;
+            top: 0;
+            height: 100%;
+            padding: 5px;
+        }
+        #ChatSideBar{
+            background-color: rgba(50,50,50,0.8);
+            width: 25px;
+            color: white;
+            font-size: 16pt;
+            cursor: pointer;
+            cursor: hand;
+        }
+        #ChatSideBar:hover{
+            color: #EEE;
+        }
+        #ChatSearchBar{
+            background-color: rgba(180,180,180,0.8);
+            display: none;
+            width: 300px;
+        }
+        div#ChatSearchBar-btn{
+            background: #484848;
+            display: block;
+            color: #EEE;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 6px;
+            width: 60px;    
+            cursor: pointer;
+            cursor: hand;
+
+        }    
+        div#ChatLookup{
+            margin: 10px;
+            margin-bottom: 20px;
+        }
+        input#input-identity{
+            font-size: 12pt;
+            width:200px;
+        }
+        body{
+            font-size: 11pt;
+            font-family: sans-serif;
+        }
+        .result-entry{
+            background: rgba(20,20,20,0.3);
+            margin-top:10px;
+        }
+        .result-top-wrapper {
+            background: #EEE;
+            position: relative;
+            color: #111;
+            cursor: pointer;
+            cursor: hand;
+        }
+        .result-title{padding: 10px;}
+        .rm-button{
+            float: right;
+            top: 10px;
+            right: 0;
+            padding-right: 10px;
+            position: absolute;
+            height: 100%;
+            vertical-align: middle;
+            text-align: center;
+        }
+        .result-info{
+            padding: 3px;
+        }
+        ul{
+            margin-left:-15px;
+            margin-top: 0.5px;
+        }
+        ul ul{
+            margin-left:-20px;
+        }
+        ul ul ul {
+            margin-left:-35px;
+        }
+    </style>
+</head>
+<body>
+    <iframe id="chat-frame" src ="https://dashboard.tawk.to" width="95%" height="100%"></iframe>
+    <div id="ChatSideBar">«</div>
+    <div id="ChatSearchBar">
+        <div id="ChatSearchBar-btn">
+            Hide >>
+        </div>
+        <div id="ChatLookup">
+            <label for="username_email">Search by Username or E-mail:</label>
+            <input type="text" name="username_email" id="input-identity">
+            <input type="submit" id="search-btn" value="Search">
+        </div>
+        <div id="ChatResult">
+            <div id="result-template" class="result-entry" hidden="hidden">
+                <div class="result-top-wrapper">
+                    <div class="result-title"></div>
+                    <div class="rm-button">x</div>
+                </div>
+                <div class="result-info" style="display:none;">
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+ <!--   <div id="Chat">
+        <div draggable="true" hidden="hidden" id="ChatToolbarHandle" style="display: block;">
+            <span title="Show toolbar" id="ChatToolBarButton">«</span>
+        </div>
+    </div>-->
+<script>
+$("#ChatSideBar").click(function () {
+
+    // Set the effect type
+    var effect = 'slide';
+
+    // Set the options for the effect type chosen
+    var options = { direction: "right" };
+
+    // Set the duration (default: 400 milliseconds)
+    var duration = 500;
+
+    $('#ChatSearchBar').toggle();
+});
+$("#ChatSearchBar-btn").click(function () {
+
+    // Set the effect type
+    var effect = 'slide';
+
+    // Set the options for the effect type chosen
+    var options = { direction: "right" };
+
+    // Set the duration (default: 400 milliseconds)
+    var duration = 200;
+
+    $('#ChatSearchBar').toggle();
+});
+
+function read_record(data,$container) {
+    $container.append('<ul/>');
+    $container = $container.children('ul');
+    $.each(data, function(key,value) {
+        if ($.isPlainObject(value)||$.isArray(value)){
+            $container = $('<li/>').text(key+': ').appendTo($container);
+            read_record(value,$container);
+        }
+        else
+            $container.append('<li>' + key + ': ' + value + '</li>');
+    });
+}
+
+$('#search-btn').click(function(){
+result = $.ajax({
+        dataType: 'json',
+        url: '/tawk_admin/get_user_school_summary',
+        data: {
+          identifier: $('#input-identity').val()
+        },
+        success: function(response){
+            $('#error-bar').remove();
+            if (response.success){
+                data = response["data"];
+                //$('#ChatResult').html(JSON.stringify(data));
+                var $container = $('#result-template').clone().appendTo('#ChatResult');
+
+                $container.attr('id','latest');
+                $container.removeAttr('hidden');
+                var $c = $('#latest .result-info');
+                var $t = $('#latest .result-title');
+                var $x = $('#latest .rm-button');
+                $t.text(data.first_name +" ("+data.email+")");
+                $t.click($c, function(){$c.toggle();});
+                $x.click($container, function(){$container.remove();});
+                read_record(data,$c);
+                $container.removeAttr('id');
+            }
+            else{
+                $('#ChatLookup').append("<div id='error-bar'>"+response.msg+"</div>");
+            }
+        }
+        });
+});
+
+$("#input-identity").keyup(function(event){
+    if(event.keyCode == 13){
+        $("#search-btn").click();
+    }
+});
+
+</script>
+</body>
+
+
+</html>
