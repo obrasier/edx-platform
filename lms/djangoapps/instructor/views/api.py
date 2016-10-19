@@ -2668,6 +2668,37 @@ def list_financial_report_downloads(_request, course_id):
     }
     return JsonResponse(response_payload)
 
+@transaction.non_atomic_requests
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('teacher')
+def calculate_grades_csv_class_code(request, course_id):
+    """
+    AlreadyRunningError is raised if the course's grades are already being updated.
+    """
+    class_code = request.GET.get('class_code')
+    course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+
+    try:
+        class_set = ClassSet.objects.get(class_code=class_code,course_id=course_key)
+        if request.user != class_set.teacher:
+            return HttpResponseForbidden('No access to this class')
+    except ClassSet.DoesNotExist:
+        return JsonResponse({"status": "Not a valid class code for given course."})
+
+
+    try:
+        instructor_task.api.submit_calculate_grades_csv_class_code(request, course_key, class_code)
+        success_status = _("The grade report is being created."
+                           " To view the status of the report, see Pending Instructor Tasks below.")
+        return JsonResponse({"status": success_status})
+    except AlreadyRunningError:
+        already_running_status = _("The grade report is currently being created."
+                                   " To view the status of the report, see Pending Instructor Tasks below."
+                                   " You will be able to download the report when it is complete.")
+        return JsonResponse({
+            "status": already_running_status
+        })
 
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
