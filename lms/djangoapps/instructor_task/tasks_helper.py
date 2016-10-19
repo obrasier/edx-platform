@@ -68,7 +68,7 @@ from student.models import CourseEnrollment, CourseAccessRole
 from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
 from instructor.utils import get_users_by_class_set
-from student.models import ClassSet
+from student.models import ClassSet, StudentProfile
 
 # define different loggers for use within tasks and on client side
 TASK_LOG = logging.getLogger('edx.celery.task')
@@ -676,8 +676,8 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
     status_interval = 100
     class_code = _task_input.get('class_code')
     class_set = ClassSet.objects.get(class_code=class_code)
-    enrolled_students = get_users_by_class_set(class_set)
-    #enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    #enrolled_students = UserStudentProfile.objects.filter(classSet = class_set)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id).filter(studentprofile__classSet=class_set)
     task_progress = TaskProgress(action_name, enrolled_students.count(), start_time)
 
     fmt = u'Task: {task_id}, InstructorTask ID: {entry_id}, Course: {course_id}, Input: {task_input}'

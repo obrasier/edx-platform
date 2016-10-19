@@ -305,7 +305,7 @@ def submit_calculate_grades_csv_class_code(request, course_key, class_code):
     """
     AlreadyRunningError is raised if the course's grades are already being updated.
     """
-    task_type = 'grade_course'
+    task_type = 'grade_course_class_code'
     task_class = calculate_grades_csv_class_code
     task_input = {'class_code': class_code}
     task_key = ""
