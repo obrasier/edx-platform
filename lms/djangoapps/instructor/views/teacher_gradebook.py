@@ -20,7 +20,7 @@ from student.models import ClassSet
 log = logging.getLogger(__name__)    
 
 # Grade book: max students per page
-MAX_STUDENTS_PER_PAGE_GRADE_BOOK = 20
+MAX_STUDENTS_PER_PAGE_GRADE_BOOK = 50
 
 
 def calculate_page_info(offset, total_students):
