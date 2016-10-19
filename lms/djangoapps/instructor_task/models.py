@@ -344,8 +344,11 @@ class LocalFSReportStore(ReportStore):
         Initialize with root_path where we're going to store our files. We
         will build a directory structure under this for each course.
         """
-        self.root_path = root_path + '/' + class_code
-        self.class_code = class_code
+        if class_code:
+            self.root_path = root_path + unicode("/") + class_code
+            self.class_code = class_code
+        else:
+            self.root_path = root_path 
         if not os.path.exists(root_path):
             os.makedirs(root_path)
 
