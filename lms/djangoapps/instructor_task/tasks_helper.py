@@ -601,7 +601,7 @@ def delete_problem_module_state(xmodule_instance_args, _module_descriptor, stude
     return UPDATE_STATUS_SUCCEEDED
 
 
-def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD'):
+def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name='GRADES_DOWNLOAD',class_code=None):
     """
     Upload data as a CSV using ReportStore.
 
@@ -615,7 +615,7 @@ def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name
         csv_name: Name of the resulting CSV
         course_id: ID of the course
     """
-    report_store = ReportStore.from_config(config_name)
+    report_store = ReportStore.from_config(config_name,class_code)
     report_store.store_rows(
         course_id,
         u"{course_prefix}_{csv_name}_{timestamp_str}.csv".format(
@@ -816,11 +816,11 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
     TASK_LOG.info(u'%s, Task type: %s, Current step: %s', task_info_string, action_name, current_step)
 
     # Perform the actual upload
-    upload_csv_to_report_store(rows, 'class_grade_report', course_id, start_date)
+    upload_csv_to_report_store(rows, 'class_grade_report', course_id, start_date, class_code=class_code)
 
     # If there are any error rows (don't count the header), write them out as well
     if len(err_rows) > 1:
-        upload_csv_to_report_store(err_rows, 'class_grade_report_err', course_id, start_date)
+        upload_csv_to_report_store(err_rows, 'class_grade_report_err', course_id, start_date, class_code=class_code)
 
     # One last update before we close out...
     TASK_LOG.info(u'%s, Task type: %s, Finalizing grade task', task_info_string, action_name)

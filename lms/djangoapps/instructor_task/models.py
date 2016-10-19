@@ -184,16 +184,16 @@ class ReportStore(object):
     passing in the whole dataset. Doing that for now just because it's simpler.
     """
     @classmethod
-    def from_config(cls, config_name):
+    def from_config(cls, config_name,class_code=None):
         """
         Return one of the ReportStore subclasses depending on django
         configuration. Look at subclasses for expected configuration.
         """
         storage_type = getattr(settings, config_name).get("STORAGE_TYPE")
         if storage_type.lower() == "s3":
-            return S3ReportStore.from_config(config_name)
+            return S3ReportStore.from_config(config_name,class_code)
         elif storage_type.lower() == "localfs":
-            return LocalFSReportStore.from_config(config_name)
+            return LocalFSReportStore.from_config(config_name,class_code)
 
     def _get_utf8_encoded_rows(self, rows):
         """
@@ -228,7 +228,7 @@ class S3ReportStore(ReportStore):
         self.bucket = conn.get_bucket(bucket_name)
 
     @classmethod
-    def from_config(cls, config_name):
+    def from_config(cls, config_name, class_code=None):
         """
         The expected configuration for an `S3ReportStore` is to have a
         `GRADES_DOWNLOAD` dict in settings with the following fields::
@@ -242,10 +242,13 @@ class S3ReportStore(ReportStore):
         Since S3 access relies on boto, you must also define `AWS_ACCESS_KEY_ID`
         and `AWS_SECRET_ACCESS_KEY` in settings.
         """
-        return cls(
-            getattr(settings, config_name).get("BUCKET"),
-            getattr(settings, config_name).get("ROOT_PATH")
-        )
+        if class_code:
+            return cls(getattr(settings, config_name).get("BUCKET"),class_code)
+        else:
+            return cls(
+                getattr(settings, config_name).get("BUCKET"),
+                getattr(settings, config_name).get("ROOT_PATH")
+            )
 
     def key_for(self, course_id, filename):
         """Return the S3 key we would use to store and retrieve the data for the
@@ -345,7 +348,7 @@ class LocalFSReportStore(ReportStore):
             os.makedirs(root_path)
 
     @classmethod
-    def from_config(cls, config_name):
+    def from_config(cls, config_name,class_code=None):
         """
         Generate an instance of this object from Django settings. It assumes
         that there is a dict in settings named GRADES_DOWNLOAD and that it has
@@ -356,7 +359,10 @@ class LocalFSReportStore(ReportStore):
             STORAGE_TYPE : "localfs"
             ROOT_PATH : /tmp/edx/report-downloads/
         """
-        return cls(getattr(settings, config_name).get("ROOT_PATH"))
+        if class_code:
+            return cls(getattr(settings, config_name).get("ROOT_PATH")+"/"+class_code)
+        else:
+            return cls(getattr(settings, config_name).get("ROOT_PATH"))
 
     def path_to(self, course_id, filename):
         """Return the full path to a given file for a given course."""
