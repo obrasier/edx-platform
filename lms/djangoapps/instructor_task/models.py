@@ -20,6 +20,7 @@ import json
 import hashlib
 import os.path
 import urllib
+import re
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -338,12 +339,13 @@ class LocalFSReportStore(ReportStore):
     This lets us do the cheap thing locally for debugging without having to open
     up a separate URL that would only be used to send files in dev.
     """
-    def __init__(self, root_path):
+    def __init__(self, root_path, class_code=None):
         """
         Initialize with root_path where we're going to store our files. We
         will build a directory structure under this for each course.
         """
-        self.root_path = root_path
+        self.root_path = root_path + '/' + class_code
+        self.class_code = class_code
         if not os.path.exists(root_path):
             os.makedirs(root_path)
 
@@ -359,10 +361,7 @@ class LocalFSReportStore(ReportStore):
             STORAGE_TYPE : "localfs"
             ROOT_PATH : /tmp/edx/report-downloads/
         """
-        if class_code:
-            return cls(getattr(settings, config_name).get("ROOT_PATH")+"/"+class_code)
-        else:
-            return cls(getattr(settings, config_name).get("ROOT_PATH"))
+        return cls(getattr(settings, config_name).get("ROOT_PATH"),class_code)
 
     def path_to(self, course_id, filename):
         """Return the full path to a given file for a given course."""
@@ -409,6 +408,6 @@ class LocalFSReportStore(ReportStore):
         files.sort(key=lambda (filename, full_path): os.path.getmtime(full_path), reverse=True)
 
         return [
-            (filename, ("/grades" + re.sub(self.root_path,'',urllib.quote(full_path))))
+            (filename, ("/grades" + '/' + self.class_code + re.sub(self.root_path,'',urllib.quote(full_path))))
             for filename, full_path in files
         ]

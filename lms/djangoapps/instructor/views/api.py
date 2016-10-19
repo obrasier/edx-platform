@@ -2553,7 +2553,7 @@ def list_email_content(request, course_id):  # pylint: disable=unused-argument
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('staff')
+#@require_level('staff','teacher')
 def list_instructor_tasks(request, course_id):
     """
     List instructor tasks.
@@ -2563,7 +2563,15 @@ def list_instructor_tasks(request, course_id):
         - `problem_location_str` lists task history for problem
         - `problem_location_str` and `unique_student_identifier` lists task
             history for problem AND student (intersection)
+     MM NEW: If user only has teacher access, only display the user's requested tasks
     """
+    course = get_course_by_id(CourseKey.from_string(course_id))
+    staff_access = has_access(request.user,'staff',course)
+    teacher_access = has_access(request.user,'teacher',course)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden()
+
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     problem_location_str = strip_if_string(request.GET.get('problem_location_str', False))
     student = request.GET.get('unique_student_identifier', None)
@@ -2589,6 +2597,10 @@ def list_instructor_tasks(request, course_id):
     else:
         # If no problem or student, just get currently running tasks
         tasks = instructor_task.api.get_running_instructor_tasks(course_id)
+
+    #if has teacher acces but not staff
+    if teacher_access and not has_access(request.user,'staff',course_id):
+        tasks = tasks.filter(requester=request.user)
 
     response_payload = {
         'tasks': map(extract_task_features, tasks),
@@ -2632,13 +2644,31 @@ def list_entrance_exam_instructor_tasks(request, course_id):  # pylint: disable=
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('staff')
+#@require_level('staff','teacher')
 def list_report_downloads(_request, course_id):
     """
     List grade CSV files that are available for download for this course.
     """
+    course = get_course_by_id(CourseKey.from_string(course_id))
+    staff_access = has_access(_request.user,'staff',course)
+    teacher_access = has_access(_request.user,'teacher',course)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden()
+
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-    report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
+
+    class_code = _request.GET.get("class_code",None)
+    if class_code:
+        #check teacher has access over this class
+        try:
+            class_set = ClassSet.objects.get(class_code=class_code,course_id=course_id)
+            if _request.user != class_set.teacher:
+                return HttpResponseForbidden('No access to this class')
+        except ClassSet.DoesNotExist:
+            return JsonResponse({"status": "Not a valid class code for given course."})
+        
+    report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD',class_code=class_code)
 
     response_payload = {
         'downloads': [
