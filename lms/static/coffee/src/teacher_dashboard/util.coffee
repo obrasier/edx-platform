@@ -331,6 +331,7 @@ class ReportDownloads
   constructor: (@$section) ->
 
     @$report_downloads_table = @$section.find ".report-downloads-table"
+    @$class_code_selector = @$section.find ".member-lists-selector"
 
     POLL_INTERVAL = 20000 # 20 seconds, just like the "pending instructor tasks" table
     @downloads_poller = new window.InstructorDashboard.util.IntervalManager(
@@ -340,8 +341,10 @@ class ReportDownloads
   reload_report_downloads: ->
     endpoint = @$report_downloads_table.data 'endpoint'
     $.ajax
+      type: 'GET'
       dataType: 'json'
       url: endpoint
+      data: {class_code: @$class_code_selector.val()}
       success: (data) =>
         if data.downloads.length
           @create_report_downloads_table data.downloads
