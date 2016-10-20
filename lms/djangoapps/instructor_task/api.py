@@ -19,9 +19,10 @@ from instructor_task.tasks import (
     delete_problem_state,
     send_bulk_course_email,
     calculate_problem_responses_csv,
-    calculate_grades_csv_class_code,
     calculate_grades_csv,
+    calculate_grades_csv_class_code,
     calculate_problem_grade_report,
+    calculate_problem_grade_report_class_code,
     calculate_students_features_csv,
     cohort_students,
     enrollment_report_features_csv,
@@ -325,14 +326,19 @@ def submit_calculate_grades_csv(request, course_key):
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 
 
-def submit_problem_grade_report(request, course_key):
+def submit_problem_grade_report(request, course_key, class_code=None):
     """
     Submits a task to generate a CSV grade report containing problem
     values.
     """
-    task_type = 'grade_problems'
-    task_class = calculate_problem_grade_report
-    task_input = {}
+    if class_code:
+        task_type = 'grade_problems_class_code'
+        task_input = {'class_code':class_code}
+        task_class = calculate_problem_grade_report_class_code
+    else:
+        task_type = 'grade_problems'
+        task_input = {}
+        task_class = calculate_problem_grade_report
     task_key = ""
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 

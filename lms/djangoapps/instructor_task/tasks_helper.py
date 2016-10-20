@@ -1085,7 +1085,13 @@ def upload_problem_grade_report(_xmodule_instance_args, _entry_id, course_id, _t
     start_time = time()
     start_date = datetime.now(UTC)
     status_interval = 100
+    class_code= _task_input.get('class_code',None)
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+
+    if class_code:
+        class_set = ClassSet.objects.get(class_code=class_code)
+        enrolled_student = enrolled_students.filter(studentprofile__classSet=class_set)   
+
     task_progress = TaskProgress(action_name, enrolled_students.count(), start_time)
 
     # This struct encapsulates both the display names of each static item in the
@@ -1143,10 +1149,10 @@ def upload_problem_grade_report(_xmodule_instance_args, _entry_id, course_id, _t
 
     # Perform the upload if any students have been successfully graded
     if len(rows) > 1:
-        upload_csv_to_report_store(rows, 'problem_grade_report', course_id, start_date)
+        upload_csv_to_report_store(rows, 'problem_grade_report', course_id, start_date, class_code=class_code)
     # If there are any error rows, write them out as well
     if len(error_rows) > 1:
-        upload_csv_to_report_store(error_rows, 'problem_grade_report_err', course_id, start_date)
+        upload_csv_to_report_store(error_rows, 'problem_grade_report_err', course_id, start_date, class_code=class_code)
 
     return task_progress.update_task_state(extra_meta={'step': 'Uploading CSV'})
 

@@ -2760,7 +2760,7 @@ def calculate_grades_csv(request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('staff')
+#@require_level('staff')
 def problem_grade_report(request, course_id):
     """
     Request a CSV showing students' grades for all problems in the
@@ -2769,9 +2769,31 @@ def problem_grade_report(request, course_id):
     AlreadyRunningError is raised if the course's grades are already being
     updated.
     """
-    course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(CourseKey.from_string(course_id))
+    staff_access = has_access(request.user,'staff',course)
+    teacher_access = has_access(request.user,'teacher',course)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden()
+
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    
+    class_code = request.GET.get("class_code",None)
+
+    if teacher_access and not class_code and not staff_access:
+        return HttpResponseBadRequest("Not a valid request.")
+
+    if class_code:
+        #check teacher has access over this class
+        try:
+            class_set = ClassSet.objects.get(class_code=class_code,course_id=course_id)
+            if request.user != class_set.teacher:
+                return HttpResponseForbidden('No access to this class')
+        except ClassSet.DoesNotExist:
+            return JsonResponse({"status": "Not a valid class code for given course."})
+     
     try:
-        instructor_task.api.submit_problem_grade_report(request, course_key)
+        instructor_task.api.submit_problem_grade_report(request, course_id, class_code)
         success_status = _("The problem grade report is being created."
                            " To view the status of the report, see Pending Instructor Tasks below.")
         return JsonResponse({"status": success_status})

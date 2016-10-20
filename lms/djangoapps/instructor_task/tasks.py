@@ -167,7 +167,7 @@ def calculate_grades_csv_class_code(entry_id, xmodule_instance_args):
     # Translators: This is a past-tense verb that is inserted into task progress messages as {action}.
     action_name = ugettext_noop('class graded')
     TASK_LOG.info(
-        u"Task: %s, InstructorTask ID: %s, Task type: %s, Preparing for task execution",
+        u"Task: %s, TeacherTask ID: %s, Task type: %s, Preparing for task execution",
         xmodule_instance_args.get('task_id'), entry_id, action_name
     )
 
@@ -189,6 +189,23 @@ def calculate_grades_csv(entry_id, xmodule_instance_args):
 
     task_fn = partial(upload_grades_csv, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
+
+@task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable
+def calculate_problem_grade_report_class_code(entry_id, xmodule_instance_args):
+    """
+    Generate a CSV for a course containing all students' problem
+    grades and push the results to an S3 bucket for download.
+    """
+    # Translators: This is a past-tense phrase that is inserted into task progress messages as {action}.
+    action_name = ugettext_noop('class problem distribution graded')
+    TASK_LOG.info(
+        u"Task: %s, TeacherTask ID: %s, Task type: %s, Preparing for task execution",
+        xmodule_instance_args.get('task_id'), entry_id, action_name
+    )
+
+    task_fn = partial(upload_problem_grade_report, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
+
 
 
 @task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable
