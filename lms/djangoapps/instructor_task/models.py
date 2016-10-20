@@ -21,6 +21,7 @@ import hashlib
 import os.path
 import urllib
 import re
+import logging
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -30,7 +31,7 @@ from django.contrib.auth.models import User
 from django.db import models, transaction
 
 from xmodule_django.models import CourseKeyField
-
+log = logging.getLogger(__name__)
 
 # define custom states used by InstructorTask
 QUEUING = 'QUEUING'
@@ -349,6 +350,7 @@ class LocalFSReportStore(ReportStore):
             self.class_code = class_code
         else:
             self.root_path = root_path 
+            self.class_code = class_code
         if not os.path.exists(root_path):
             os.makedirs(root_path)
 
@@ -380,7 +382,7 @@ class LocalFSReportStore(ReportStore):
         full_path = self.path_to(course_id, filename)
         directory = os.path.dirname(full_path)
         if not os.path.exists(directory):
-            os.mkdir(directory)
+            os.makedirs(directory)
 
         with open(full_path, "wb") as f:
             f.write(buff.getvalue())
@@ -409,8 +411,13 @@ class LocalFSReportStore(ReportStore):
             return []
         files = [(filename, os.path.join(course_dir, filename)) for filename in os.listdir(course_dir)]
         files.sort(key=lambda (filename, full_path): os.path.getmtime(full_path), reverse=True)
+        
+        if self.class_code:
+            class_code = "/" + self.class_code
+        else:
+            class_code = ""
 
         return [
-            (filename, ("/grades" + '/' + self.class_code + re.sub(self.root_path,'',urllib.quote(full_path))))
+            (filename, ("/grades" + class_code + re.sub(self.root_path,'',urllib.quote(full_path))))
             for filename, full_path in files
         ]
