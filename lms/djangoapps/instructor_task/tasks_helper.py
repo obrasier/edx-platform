@@ -72,7 +72,6 @@ from student.models import ClassSet, StudentProfile
 
 # define different loggers for use within tasks and on client side
 TASK_LOG = logging.getLogger('edx.celery.task')
-log = logging.getLogger('__name__')
 
 # define value to use when no task_id is provided:
 UNKNOWN_TASK_ID = 'unknown-task_id'
