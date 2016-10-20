@@ -30,11 +30,17 @@ class AlreadyRunningError(Exception):
     pass
 
 
-def _task_is_running(course_id, task_type, task_key):
+def _task_is_running(course_id, task_type, task_key, user):
     """Checks if a particular task is already running"""
-    running_tasks = InstructorTask.objects.filter(
-        course_id=course_id, task_type=task_type, task_key=task_key
+    if task_type=="grade_course_class_code" or task_type=="grade_problems_class_code":
+        running_tasks = InstructorTask.objects.filter(
+            course_id=course_id, task_type=task_type, task_key=task_key, requester=user
     )
+    else:
+        running_tasks = InstructorTask.objects.filter(
+            course_id=course_id, task_type=task_type, task_key=task_key
+        )
+
     # exclude states that are "ready" (i.e. not "running", e.g. failure, success, revoked):
     for state in READY_STATES:
         running_tasks = running_tasks.exclude(task_state=state)
@@ -57,7 +63,7 @@ def _reserve_task(course_id, task_type, task_key, task_input, requester):
     put in further safeguards.
     """
 
-    if _task_is_running(course_id, task_type, task_key):
+    if _task_is_running(course_id, task_type, task_key, requester):
         log.warning("Duplicate task found for task_type %s and task_key %s", task_type, task_key)
         raise AlreadyRunningError("requested task is already running")
 
