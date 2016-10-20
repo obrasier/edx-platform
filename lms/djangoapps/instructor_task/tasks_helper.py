@@ -72,6 +72,7 @@ from student.models import ClassSet, StudentProfile
 
 # define different loggers for use within tasks and on client side
 TASK_LOG = logging.getLogger('edx.celery.task')
+log = logging.getLogger('__name__')
 
 # define value to use when no task_id is provided:
 UNKNOWN_TASK_ID = 'unknown-task_id'
@@ -1090,7 +1091,7 @@ def upload_problem_grade_report(_xmodule_instance_args, _entry_id, course_id, _t
 
     if class_code:
         class_set = ClassSet.objects.get(class_code=class_code)
-        enrolled_student = enrolled_students.filter(studentprofile__classSet=class_set)   
+        enrolled_students = enrolled_students.filter(studentprofile__classSet=class_set)   
 
     task_progress = TaskProgress(action_name, enrolled_students.count(), start_time)
 
