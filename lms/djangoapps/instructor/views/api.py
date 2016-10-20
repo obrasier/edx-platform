@@ -2657,8 +2657,12 @@ def list_report_downloads(_request, course_id):
         return HttpResponseForbidden()
 
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-
+    
     class_code = _request.GET.get("class_code",None)
+
+    if teacher_access and not class_code and not staff_access:
+        return HttpResponseBadRequest("Not a valid request.")
+
     if class_code:
         #check teacher has access over this class
         try:
