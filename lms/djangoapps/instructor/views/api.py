@@ -111,13 +111,15 @@ from .tools import (
     bulk_email_is_enabled_for_course,
 )
 from opaque_keys.edx.keys import CourseKey, UsageKey
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from opaque_keys.edx.locations import SlashSeparatedCourseKey, BlockUsageLocator
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.course_groups.cohorts import is_course_cohorted
 from openedx.core.djangoapps.course_groups.models import CourseUserGroup
 from openedx.core.djangoapps.course_groups.cohorts import get_cohort_by_name, add_user_to_cohort, remove_user_from_cohort
 from student.helpers import is_teacher
 from instructor.utils import get_users_by_class_set
+from openedx.core.djangoapps.content.course_structures.models import CourseStructure
+from collections import OrderedDict
 log = logging.getLogger(__name__)
 
 
@@ -3815,11 +3817,11 @@ def _file_storage_path(location, sha1, ext):
     return path
 
 def _get_class_submissions(class_set, course_id, sort_by="problem"):
-    
+
     if not ((sort_by == "problem") or (sort_by == "student")):
         raise ValueError('sort_by not valid input')
 
-    class_code = class_set.class_code
+    class_code = class_set.class_code  
 
     d = datetime.date.today().isoformat()
 
@@ -3849,24 +3851,25 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                 sub = submissions[0]
 
                 sha1 = sub['answer']['sha1']
-                filename = sub['answer']['filename']
-                idx = filename.index('.')
-                ext = filename[idx:]
+                sub_filename = sub['answer']['filename']
+                idx = sub_filename.index('.')
+                ext = sub_filename[idx:]  
                 s_name = s["last_name"]+'_'+s["first_name"]
 
                 s3path = _file_storage_path(block_loc,sha1,ext)
 
                 chapter = problems[p]["chapter"]
                 section_number = problems[p]["section_number"]
-                section_name = problems[p]["section_name"]
+                section_name = problems[p]["section_name"]   
                 problem_number = problems[p]["problem_number"]
+                problem_name = problems[p]["problem_name"]   
 
                 if sort_by == "problem":
                     filename = s_name+ext
-                    folder = "/".join([root,chapter,section_number+"_"+section_name,problem_number])
+                    folder = "/".join([root,chapter,unicode(section_number)+"_"+section_name,unicode(problem_number)+"_"+problem_name])
                 elif sort_by == "student":
-                    filename = problem_number+_+filename+ext
-                    folder = "/".join([root,s_name,chapter,section_number+"_"+section_name])
+                    filename = unicode(problem_number)+"_"+problem_name+"_"+sub_filename
+                    folder = "/".join([root,s_name,chapter,unicode(section_number)+"_"+section_name])
 
                 file_info = {
                                 "S3Path": s3path,
@@ -3874,6 +3877,7 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                                 "Folder": folder,
                             }
                 file_dicts.append(file_info)
+    
     rds = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
     ref = _get_download_key
@@ -3906,7 +3910,7 @@ def _order_problems(blocks):
             assignments[block_format][block] = list()
 
         # Put the problems into the correct order within their assignment.
-        if blocks[block]['block_type'] == 'problem' and blocks[block]['graded'] is True:
+        if blocks[block]['block_type'] == 'edx_sga' and blocks[block]['graded'] is True:
             current = blocks[block]['parent']
             # crawl up the tree for the sequential block
             while blocks[current]['block_type'] != 'sequential':
@@ -3917,7 +3921,6 @@ def _order_problems(blocks):
 
     # Now that we have a sorting and an order for the assignments and problems,
     # iterate through them in order to generate the header row.
-    problems = OrderedDict()
     for assignment_type in assignments:
         for assignment_index, assignment in enumerate(assignments[assignment_type].keys(), start=1):
             for p_index,problem in enumerate(assignments[assignment_type][assignment]):
