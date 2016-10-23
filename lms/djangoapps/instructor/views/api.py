@@ -5,6 +5,9 @@ JSON views which the instructor dashboard requests.
 
 Many of these GETs may become PUTs in the future.
 """
+import redis
+import hashlib
+import datetime
 import StringIO
 import json
 import logging
@@ -3750,3 +3753,190 @@ def validate_request_data_and_get_certificate(certificate_invalidation, course_k
             "username/email and the selected course are correct and try again."
         ).format(student=student.username, course=course_key.course))
     return certificate
+
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+def download_class_submissions(request, course_id):
+    """
+    Download submissions of class. (Doesn't query for individual student)
+
+    Takes post query parameters.
+        - class_code (required)
+        - list of problems (by index) 
+        - folder struc (week-problem > student) or (student > week-problem)
+    """
+    course = get_course_by_id(CourseKey.from_string(course_id))
+    staff_access = has_access(request.user,'staff',course)
+    teacher_access = has_access(request.user,'teacher',course)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden("Permission denied.")
+
+    #query parameters
+    class_code = request.GET.get('class_code',None)
+    if not class_code:
+        return HttpResponseBadRequest("Invalid request.")        
+
+    #check class is valid, and teacher is teach of class
+    try:
+        class_set = ClassSet.objects.get(class_code=class_code)
+        if teacher_access and not staff_access:
+            if class_set.teacher != request.user:
+                return HttpResponseForbidden("Permission denied.")        
+    except ClassSet.DoesNotExist:
+        return HttpResponseBadRequest("Invalid request.")        
+
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+
+    #just taking the whole class for now
+    submission_link = _get_class_submissions(class_set, course_id)
+
+    return redirect(submission_link)
+
+
+def _get_download_key(course_id,class_code,date):
+    sha1 = hashlib.sha1()
+    sha1.update(course_id)
+    sha1.update(class_code)
+    sha1.update(date)
+    return sha1.hexdigest()
+    
+def _file_storage_path(location, sha1, ext):
+    path = ( 
+        '{loc.org}/{loc.course}/{loc.block_type}/{loc.block_id}'
+        '/{sha1}{ext}'.format(
+            loc=location,
+            sha1=sha1,
+            ext=ext
+        )   
+    )   
+    return path
+
+def _get_class_submissions(class_set, course_id, sort_by="problem"):
+    
+    if not ((sort_by == "problem") or (sort_by == "student")):
+        raise ValueError('sort_by not valid input')
+
+    class_code = class_set.class_code
+
+    d = datetime.date.today().isoformat()
+
+    #get list of students in class with anon ids
+    students = get_users_by_class_set(class_set)
+    s_list = [{"username":s.username,"first_name":s.first_name,"last_name":s.last_name,"email":s.email ,"anon_id": anonymous_id_for_user(s,course_id,save=False)} for s in students]
+
+    #get list of grade problems
+    problems = _get_problems_dict(course_id)
+
+    file_dicts = []
+
+    root = class_code + re.sub('\+','_',unicode(course_id).split(':',1)[-1]) + "_submissions_" + d
+    #get class problems
+    for p in problems:
+        block_loc = BlockUsageLocator.from_string(p)
+        for s in s_list:
+            student_dict = {
+                "student_id": s["anon_id"],
+                "item_id": p,
+                "course_id": course_id,
+                "item_type": 'sga',
+            }
+            #get submission answer
+            submissions = sub_api.get_submissions(student_dict)
+            if submissions:
+                sub = submissions[0]
+
+                sha1 = sub['answer']['sha1']
+                filename = sub['answer']['filename']
+                idx = filename.index('.')
+                ext = filename[idx:]
+                s_name = s["last_name"]+'_'+s["first_name"]
+
+                s3path = _file_storage_path(block_loc,sha1,ext)
+
+                chapter = problems[p]["chapter"]
+                section_number = problems[p]["section_number"]
+                section_name = problems[p]["section_name"]
+                problem_number = problems[p]["problem_number"]
+
+                if sort_by == "problem":
+                    filename = s_name+ext
+                    folder = "/".join([root,chapter,section_number+"_"+section_name,problem_number])
+                elif sort_by == "student":
+                    filename = problem_number+_+filename+ext
+                    folder = "/".join([root,s_name,chapter,section_number+"_"+section_name])
+
+                file_info = {
+                                "S3Path": s3path,
+                                "FileName": filename,
+                                "Folder": folder,
+                            }
+                file_dicts.append(file_info)
+    rds = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+
+    ref = _get_download_key
+    rds.set( key="zip:"+ref, value=unicode(file_dicts), expiry=300 )
+
+    return (settings.ZIPPER_BASE+"/?ref=" + ref )
+    
+def _order_problems(blocks):
+    """
+    Sort the problems by the assignment type and assignment that it belongs to.
+
+    Args:
+        blocks (OrderedDict) - A course structure containing blocks that have been ordered
+                              (i.e. when we iterate over them, we will see them in the order
+                              that they appear in the course).
+
+    Returns:
+        an OrderedDict that gives heirarchal information and ordering for the problems.
+    """
+    problems = OrderedDict()
+    assignments = dict()
+    # First, sort out all the blocks into their correct assignments and all the
+    # assignments into their correct types.
+    for block in blocks:
+        # Put the assignments in order into the assignments list.
+        if blocks[block]['block_type'] == 'sequential':
+            block_format = blocks[block]['format']
+            if block_format not in assignments:
+                assignments[block_format] = OrderedDict()
+            assignments[block_format][block] = list()
+
+        # Put the problems into the correct order within their assignment.
+        if blocks[block]['block_type'] == 'problem' and blocks[block]['graded'] is True:
+            current = blocks[block]['parent']
+            # crawl up the tree for the sequential block
+            while blocks[current]['block_type'] != 'sequential':
+                current = blocks[current]['parent']
+
+            current_format = blocks[current]['format']
+            assignments[current_format][current].append(block)
+
+    # Now that we have a sorting and an order for the assignments and problems,
+    # iterate through them in order to generate the header row.
+    problems = OrderedDict()
+    for assignment_type in assignments:
+        for assignment_index, assignment in enumerate(assignments[assignment_type].keys(), start=1):
+            for p_index,problem in enumerate(assignments[assignment_type][assignment]):
+                name_info = { 
+                    "problem_number": p_index,
+                    "problem_name": blocks[problem]['display_name'],
+                    "chapter":re.sub(' Questions','',assignment_type),
+                    "section_number": assignment_index,
+                    "section_name": blocks[assignment]['display_name']
+                }   
+                problems[problem] = name_info
+
+    return problems
+
+
+def _get_problems_dict(course_id):
+    try:
+        course_structure = CourseStructure.objects.get(course_id=course_id)
+        blocks = course_structure.ordered_blocks
+        return _order_problems(blocks)
+    except CourseStructure.DoesNotExist:
+        raise ValueError('Could not retrieve a Course Structure for given course')

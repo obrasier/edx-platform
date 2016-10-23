@@ -52,6 +52,11 @@ CHAT_SRC = ""
 ENABLE_GITHUB_GIST_PROXY = False
 GITHUB_GIST_BASE_URL = "https://gist.github.com/edx/"
 
+############## REDIS ################
+REDIS_HOST = 'localhost'
+REDIS_PORT = '6739'
+ZIPPER_BASE = 'http://www.example.com'
+
 ################################### DISCOURSE SSO ##############################
 ENABLE_DISCOURSE_SSO = False
 DISCOURSE_BASE_URL = "http://www.discourse.com"

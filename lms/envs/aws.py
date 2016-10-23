@@ -431,6 +431,11 @@ FIELD_OVERRIDE_PROVIDERS = tuple(ENV_TOKENS.get('FIELD_OVERRIDE_PROVIDERS', []))
 with open(CONFIG_ROOT / CONFIG_PREFIX + "auth.json") as auth_file:
     AUTH_TOKENS = json.load(auth_file)
 
+############## REDIS ################
+REDIS_HOST = AUTH_TOKENS.get('REDIS_HOST', None)
+REDIS_PORT = AUTH_TOKENS.get('REDIS_PORT', None)
+ZIPPER_BASE = AUTH_TOKENS.get('ZIPPER_PORT', None)
+
 ############## DISCOURSE SECRET KEY ##########
 DISCOURSE_SSO_SECRET = AUTH_TOKENS.get('DISCOURSE_SSO_SECRET', None)
 
