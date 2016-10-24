@@ -3793,7 +3793,12 @@ def download_class_submissions(request, course_id):
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
 
     #just taking the whole class for now
-    submission_link = _get_class_submissions(class_set, course_id)
+    try:
+        submission_link = _get_class_submissions(class_set, course_id)
+    except ValueError:
+        return JsonResponseBadRequest("sort_by not a valid input")
+    except EmptySubmissionsList:
+        return JsonResponse({'msg': "No submissions to download"})
 
     return redirect(submission_link)
 
@@ -3816,6 +3821,9 @@ def _file_storage_path(location, sha1, ext):
     )   
     return path
 
+class EmptySubmissionsList(Exception):
+    pass
+
 def _get_class_submissions(class_set, course_id, sort_by="problem"):
 
     if not ((sort_by == "problem") or (sort_by == "student")):
@@ -3832,9 +3840,12 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
     #get list of grade problems
     problems = _get_problems_dict(course_id)
 
+    if len(problems) == 0
+        log.warning("No problems found")
+
     file_dicts = []
 
-    root = class_code + re.sub('\+','_',unicode(course_id).split(':',1)[-1]) + "_submissions_" + d
+    root = class_code + '_' + re.sub('\+','_',unicode(course_id).split(':',1)[-1]) + "_submissions_" + d
     #get class problems
     for p in problems:
         block_loc = BlockUsageLocator.from_string(p)
@@ -3863,6 +3874,10 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                 section_name = problems[p]["section_name"]   
                 problem_number = problems[p]["problem_number"]
                 problem_name = problems[p]["problem_name"]   
+        
+                #invalid characters
+                problem_name = re.sub('[^\w\-\. ]','',problem_name)
+                section_name = re.sub('[^\w\-\. ]','',section_name)
 
                 if sort_by == "problem":
                     filename = s_name+ext
@@ -3871,6 +3886,9 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                     filename = unicode(problem_number)+"_"+problem_name+"_"+sub_filename
                     folder = "/".join([root,s_name,chapter,unicode(section_number)+"_"+section_name])
 
+                filename = re.sub(' ','_',filename)
+                folder = re.sub(' ','_',folder)
+
                 file_info = {
                                 "S3Path": s3path,
                                 "FileName": filename,
@@ -3878,10 +3896,14 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                             }
                 file_dicts.append(file_info)
     
-    rds = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
 
-    ref = _get_download_key
-    rds.set( key="zip:"+ref, value=unicode(file_dicts), expiry=300 )
+    if len(file_dicts) == 0:
+        raise EmptySubmissionsList
+
+    json_payload = json.dumps(file_dicts)
+    ref = _get_download_key(unicode(course_id),class_code,d)
+    rds = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
+    rds.setex("zip:"+ref, 300, json_payload)
 
     return (settings.ZIPPER_BASE+"/?ref=" + ref )
     
