@@ -3778,6 +3778,7 @@ def download_class_submissions(request, course_id):
 
     #query parameters
     class_code = request.GET.get('class_code',None)
+    arrange_by = request.GET.get('arrange_by',"problems")
     if not class_code:
         return HttpResponseBadRequest("Invalid request.")        
 
@@ -3794,7 +3795,7 @@ def download_class_submissions(request, course_id):
 
     #just taking the whole class for now
     try:
-        submission_link = _get_class_submissions(class_set, course_id)
+        submission_link = _get_class_submissions(class_set, course_id,sort_by = arrange_by)
     except ValueError:
         return JsonResponseBadRequest("sort_by not a valid input")
     except EmptySubmissionsList:
@@ -3840,8 +3841,8 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
     #get list of grade problems
     problems = _get_problems_dict(course_id)
 
-    if len(problems) == 0
-        log.warning("No problems found")
+    if len(problems) == 0:
+        log.warning("DownloadClassSubmissions: No problems found")
 
     file_dicts = []
 
