@@ -615,7 +615,10 @@ def upload_csv_to_report_store(rows, csv_name, course_id, timestamp, config_name
         csv_name: Name of the resulting CSV
         course_id: ID of the course
     """
-    class_prefix =  class_code+'_' if class_code else "" 
+    if class_code:
+        class_prefix =  class_code+'_'
+    else:
+        class_prefix = "" 
     report_store = ReportStore.from_config(config_name,class_code)
     report_store.store_rows(
         course_id,

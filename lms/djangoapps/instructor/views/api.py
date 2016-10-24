@@ -3804,7 +3804,7 @@ def download_class_submissions(request, course_id):
         return JsonResponse({'success': False,
                              'msg': "No submissions to download"})
 
-    return redirect(response)
+    return JsonResponse(response)
 
 
 def _get_download_key(course_id,class_code,date):
