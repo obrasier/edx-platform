@@ -89,7 +89,7 @@ class DataDownload
           if data.success
             @$download_submissions_response.text data['msg']
           else 
-            window.url(data['url'])
+            window.open(data['url'])
             @$download_submissions_response.text data['msg']
 
 
