@@ -3778,7 +3778,7 @@ def download_class_submissions(request, course_id):
 
     #query parameters
     class_code = request.GET.get('class_code',None)
-    arrange_by = request.GET.get('arrange_by',"problems")
+    arrange_by = request.GET.get('arrange_by',"problem")
     if not class_code:
         return HttpResponseBadRequest("Invalid request.")        
 
