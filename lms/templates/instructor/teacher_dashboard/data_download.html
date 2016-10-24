@@ -12,11 +12,11 @@
             <option>No classes available.</option>
         %endif
     </select></p>
-  <label for="member-lists-selector-2">
+  <label for="member-lists-selector-2" style="font-size:10pt;">
     %if len(section_data['class_code_list']) == 0:
         You have no classes available. Create a new class in the My Classes Tab.
     %else:
-        Select which of your classes you would like to obtain grades from.
+        Select which of your classes you would like to obtain grades and/or submissions from.
     %endif
   </label>
 %if len(section_data['class_code_list']) > 0:
@@ -24,35 +24,57 @@
   <hr>
   <h2>${_("Gradebook")}</h2>
     <p><input type="button" name="go-to-gradebook" value="Go To Gradebook" onclick="location.href='${section_data['gradebook_url']}'+'/'+document.getElementById('member-lists-selector-2').value;"/></p>
+    <label for="go-to-gradebook" style = "text-size:10pt;">
+        View an interactive list of your students' scores.
+    </p>
 %endif
 </div>
 
 %if len(section_data['class_code_list']) > 0:
 %if settings.FEATURES.get('ENABLE_S3_GRADE_DOWNLOADS'):
   <div class="reports-download-container action-type-container">
+    <div>
     <hr>
     <h2> ${_("Download Grades")}</h2>
 
-    <p>${_("For large courses, generating some reports can take several hours. When report generation is complete, a link that includes the date and time of generation appears in the table below. These reports are generated in the background, meaning it is OK to navigate away from this page while your report is generating.")}</p>
+    <p style="margin-bottom:10px;">${_("Click to generate a CSV grade report for all currently enrolled students.")}</p>
+    </div>
+      <div class="data-display-table profile-data-display-table" id="data-student-profiles-table"></div>
+        <div class="request-response msg msg-confirm copy" id="report-request-response"></div>
+        <div class="request-response-error msg msg-error copy" id="report-request-response-error"></div>
+    <div style="display:inline-block;width:100%;">
+    <div style="width:60%;float:right;border:0.75pt;border-radius:3px;">
+    <p style="color:#666;"><strong>Reports Generated</strong></p>
+    <div class="report-downloads-table" id="report-downloads-table" data-endpoint="${ section_data['list_report_downloads_url'] }" ></div>
+    </div>
+    <div style="margin-top:30px;width:40%; float: left;">
+    <table>
+        <tbody>
+        <tr><td>
+        <p><input type="button" name="calculate-grades-csv" value="${_("Generate Grade Report")}" data-endpoint="${ section_data['calculate_grades_csv_url'] }"/>
+        </p>
+    <label for="calculate-grades-csv" style="text-size:10pt">A CSV report for each student's total grade and subtotal in each week.</label>
+        </td>
+        </tr>
+        <tr><td>
+        <p><input type="button" name="problem-grade-report" value="${_("Generate Problem Grade Report")}" data-endpoint="${ section_data['problem_grade_report_url'] }"/>
+        </p>
+        <label for="problem-grade-report" style="text-size:10pt">A CSV report for each student's total grade and subtotal in each problem question.</label>
+        </td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+    </div>
+    <div>
+    <p style="line-height:1.5;">${_("For large classes, generating some reports can take several hours. When report generation is complete, a link appears in the table above. These reports are generated in the background, meaning it is OK to navigate away from this page while your report is generating.")}</p>
 
-    <p>${_("Please be patient and do not click these buttons multiple times. Clicking these buttons multiple times will significantly slow the generation process.")}</p>
+    <p style="line-height:1.5">${_("Please be patient and do not click these buttons multiple times. Clicking these buttons multiple times will significantly slow the generation process. Reports are not deleted, so you will always be able to access previously generated reports from this page.")}</p>
 
-
-  <div class="data-display-table profile-data-display-table" id="data-student-profiles-table"></div>
-
-    <p>${_("Click to generate a CSV grade report for all currently enrolled students.")}</p>
-
-    <p><input type="button" name="calculate-grades-csv" value="${_("Generate Grade Report")}" data-endpoint="${ section_data['calculate_grades_csv_url'] }"/></p>
-
-    <p><input type="button" name="problem-grade-report" value="${_("Generate Problem Grade Report")}" data-endpoint="${ section_data['problem_grade_report_url'] }"/></p>
-
-    <div class="request-response msg msg-confirm copy" id="report-request-response"></div>
-    <div class="request-response-error msg msg-error copy" id="report-request-response-error"></div>
+    <div>
     <br>
-
-    <p><b>${_("Reports Available for Download")}</b></p>
-    <p>
-      ${_("The reports listed below are available for download. A link to every report remains available on this page, identified by the UTC date and time of generation. Reports are not deleted, so you will always be able to access previously generated reports from this page.")}
+    <p style="line-height:1.5">
+      ${_("")}
     </p>
 
   %if settings.FEATURES.get('ENABLE_ASYNC_ANSWER_DISTRIBUTION'):
@@ -64,9 +86,29 @@
     ## Translators: a table of URL links to report files appears after this sentence.
     <p>${_("<b>Note</b>: To keep student data secure, you cannot save or email these links for direct access. Copies of links expire within 5 minutes.")}</p><br>
 
-    <div class="report-downloads-table" id="report-downloads-table" data-endpoint="${ section_data['list_report_downloads_url'] }" ></div>
   </div>
 %endif
+    <hr>
+    <div class="download-class-submissions-wrapper" id="download-class-submissions-form">
+        <h2>Download Class File Submissions</h2>
+        <p class="download-class-submissions-instructions" style="line-height:1.5">
+            Click 'Download Submissions' to download the file submissions of the entire class. The generated link expires within 5 mins.
+            <br>
+            <i>Coming Soon: The ability to select a subset of submissions by week.</i> 
+        </p>
+<p></p>
+            <div class="download-class-submissions-form">
+            <p>
+                <label for="download-class-submissions-arrange_by">Arrange folder structures as: </p>
+                <input type="radio" name="download-class-submissions-arrange_by" value="problem" checked/> Challenge/Section/Problem/Student.ext
+                <br/>
+                <input type="radio" name="download-class-submissions-arrange_by" value="student" /> Student/Challenge/Section/Problem.ext
+            </p>
+            <p><input type="button" name="download-class-submissions" value="${_("Download Submissions")}" data-endpoint="${ section_data['download_class_submissions_url'] }"/>
+            
+            </div>
+        <p class="download-submissions-response" style="font-style: italic;"></p>
+    </div>
 
 %if settings.FEATURES.get('ENABLE_INSTRUCTOR_BACKGROUND_TASKS'):
   <div class="running-tasks-container action-type-container">

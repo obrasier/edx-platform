@@ -20,10 +20,12 @@ class DataDownload
 
     @$calculate_grades_csv_btn = @$section.find("input[name='calculate-grades-csv']'")
     @$problem_grade_report_csv_btn = @$section.find("input[name='problem-grade-report']'")
+    @$download_class_submissions_btn = @$section.find("input[name='download-class-submissions']'")
     
     # point to class_code selector
     @$class_code                      = @$section.find '.wrapper-member-select'
     @$class_code_select               = @$class_code.find '.member-lists-selector'
+    @$arrange_by_select               = @$section.find("input[name='download-class-submissions-arrange_by']")
     
     # response areas
     @$download                        = @$section.find '.data-download-container'
@@ -33,6 +35,7 @@ class DataDownload
     @$download_display_table          = @$reports.find '.profile-data-display-table'
     @$reports_request_response        = @$reports.find '.request-response'
     @$reports_request_response_error  = @$reports.find '.request-response-error'
+    @$download_submissions_response   = @$section.find '.download-submissions-response'
 
     @report_downloads = new (ReportDownloads()) @$section
     @instructor_tasks = new (PendingInstructorTasks()) @$section
@@ -47,6 +50,9 @@ class DataDownload
     @$problem_grade_report_csv_btn.click (e) =>
       @onClickGradeDownload @$problem_grade_report_csv_btn, gettext("Error generating problem grade report. Please try again.")
 
+     @$download_class_submissions_btn.click (e) =>
+      @onClickDownloadSubs @$download_class_submissions_btn, gettext("Error generating download link. Please try again.")
+
   onClickGradeDownload: (button, errorMessage) ->
       # Clear any CSS styling from the request-response areas
       #$(".msg-confirm").css({"display":"none"})
@@ -57,13 +63,35 @@ class DataDownload
         type: 'GET'
         dataType: 'json'
         url: url
-        data: {class_code: @$class_code_select.val()}
+        data: {class_code: @$class_code_select.val(),arrange_by: @$arrange_by_select.val()}
         error: (std_ajax_err) =>
           @$reports_request_response_error.text errorMessage
           $(".msg-error").css({"display":"block"})
         success: (data) =>
           @$reports_request_response.text data['status']
           $(".msg-confirm").css({"display":"block"})
+
+  onClickDownloadSubs: (button, errorMessage) ->
+      # Clear any CSS styling from the request-response areas
+      #$(".msg-confirm").css({"display":"none"})
+      #$(".msg-error").css({"display":"none"})
+      @clear_display()
+      url = button.data 'endpoint'
+      $.ajax
+        type: 'GET'
+        dataType: 'json'
+        url: url
+        data: {class_code: @$class_code_select.val(),arrange_by: @$arrange_by_select.val()}
+        error: (std_ajax_err) =>
+          @$reports_request_response_error.text errorMessage
+          $(".msg-error").css({"display":"block"})
+        success: (data) =>
+          if data.success
+            @$download_submissions_response.text data['msg']
+          else 
+            window.url(data['url'])
+            @$download_submissions_response.text data['msg']
+
 
   # handler for when the section title is clicked.
   onClickTitle: ->
@@ -84,6 +112,7 @@ class DataDownload
     @$download_request_response_error.empty()
     @$reports_request_response.empty()
     @$reports_request_response_error.empty()
+    @$download_submissions_response.empty()
     # Clear any CSS styling from the request-response areas
     $(".msg-confirm").css({"display":"none"})
     $(".msg-error").css({"display":"none"})

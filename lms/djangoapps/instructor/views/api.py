@@ -3796,12 +3796,15 @@ def download_class_submissions(request, course_id):
     #just taking the whole class for now
     try:
         submission_link = _get_class_submissions(class_set, course_id,sort_by = arrange_by)
+        response = {'success': True, 'url': submission_link}
     except ValueError:
-        return JsonResponseBadRequest("sort_by not a valid input")
+        return JsonResponse({'success': False,
+                             'msg': "Invalid arrang_by parameter"})
     except EmptySubmissionsList:
-        return JsonResponse({'msg': "No submissions to download"})
+        return JsonResponse({'success': False,
+                             'msg': "No submissions to download"})
 
-    return redirect(submission_link)
+    return redirect(response)
 
 
 def _get_download_key(course_id,class_code,date):
@@ -3881,7 +3884,7 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
                 section_name = re.sub('[^\w\-\. ]','',section_name)
 
                 if sort_by == "problem":
-                    filename = s_name+ext
+                    filename = s_name+'-'+sub_filename
                     folder = "/".join([root,chapter,unicode(section_number)+"_"+section_name,unicode(problem_number)+"_"+problem_name])
                 elif sort_by == "student":
                     filename = unicode(problem_number)+"_"+problem_name+"_"+sub_filename
