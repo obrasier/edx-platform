@@ -81,6 +81,7 @@ class DataDownload
         type: 'GET'
         dataType: 'json'
         url: url
+        aync: false
         data: {class_code: @$class_code_select.val(),arrange_by: @$arrange_by_select.val()}
         error: (std_ajax_err) =>
           @$reports_request_response_error.text errorMessage
