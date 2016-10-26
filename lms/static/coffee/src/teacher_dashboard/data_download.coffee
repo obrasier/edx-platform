@@ -25,7 +25,6 @@ class DataDownload
     # point to class_code selector
     @$class_code                      = @$section.find '.wrapper-member-select'
     @$class_code_select               = @$class_code.find '.member-lists-selector'
-    @$arrange_by_select               = @$section.find("input[name='download-class-submissions-arrange_by']")
     
     # response areas
     @$download                        = @$section.find '.data-download-container'
@@ -63,7 +62,7 @@ class DataDownload
         type: 'GET'
         dataType: 'json'
         url: url
-        data: {class_code: @$class_code_select.val(),arrange_by: @$arrange_by_select.val()}
+        data: {class_code: @$class_code_select.val()}
         error: (std_ajax_err) =>
           @$reports_request_response_error.text errorMessage
           $(".msg-error").css({"display":"block"})
@@ -82,7 +81,7 @@ class DataDownload
         dataType: 'json'
         url: url
         aync: false
-        data: {class_code: @$class_code_select.val(),arrange_by: @$arrange_by_select.val()}
+        data: {class_code: @$class_code_select.val(), arrange_by: @$section.find("input[name='download-class-submissions-arrange_by']:checked").val()}
         error: (std_ajax_err) =>
           @$reports_request_response_error.text errorMessage
           $(".msg-error").css({"display":"block"})
