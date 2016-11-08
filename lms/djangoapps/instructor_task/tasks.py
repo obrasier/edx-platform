@@ -37,6 +37,7 @@ from instructor_task.tasks_helper import (
     upload_problem_responses_csv,
     upload_grades_csv,
     upload_grades_csv_class_code,
+    upload_submissions_csv_class_code,
     upload_problem_grade_report,
     upload_students_csv,
     cohort_students_and_upload,
@@ -173,6 +174,23 @@ def calculate_grades_csv_class_code(entry_id, xmodule_instance_args):
 
     task_fn = partial(upload_grades_csv_class_code, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
+
+
+@task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable
+def calculate_submissions_csv_class_code(entry_id, xmodule_instance_args):
+    """
+    Grade a course and push the results to an S3 bucket for download.
+    """
+    # Translators: This is a past-tense verb that is inserted into task progress messages as {action}.
+    action_name = ugettext_noop('class submissions tallied')
+    TASK_LOG.info(
+        u"Task: %s, TeacherTask ID: %s, Task type: %s, Preparing for task execution",
+        xmodule_instance_args.get('task_id'), entry_id, action_name
+    )
+
+    task_fn = partial(upload_submissions_csv_class_code, xmodule_instance_args)
+    return run_main_task(entry_id, task_fn, action_name)
+
 
 
 @task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable

@@ -21,6 +21,7 @@ from instructor_task.tasks import (
     calculate_problem_responses_csv,
     calculate_grades_csv,
     calculate_grades_csv_class_code,
+    calculate_submissions_csv_class_code,
     calculate_problem_grade_report,
     calculate_problem_grade_report_class_code,
     calculate_students_features_csv,
@@ -308,6 +309,17 @@ def submit_calculate_grades_csv_class_code(request, course_key, class_code):
     """
     task_type = 'grade_course_class_code'
     task_class = calculate_grades_csv_class_code
+    task_input = {'class_code': class_code}
+    task_key = ""
+
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)
+
+def submit_calculate_submissions_csv_class_code(request, course_key, class_code):
+    """
+    AlreadyRunningError is raised if the course's grades are already being updated.
+    """
+    task_type = 'grade_course_class_code'
+    task_class = calculate_submissions_csv_class_code
     task_input = {'class_code': class_code}
     task_key = ""
 

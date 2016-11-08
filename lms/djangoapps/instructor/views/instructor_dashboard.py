@@ -799,6 +799,7 @@ def _section_grade_centre(course, access,class_code_list):
         'list_report_downloads_url': reverse('list_report_downloads', kwargs={'course_id': unicode(course_key)}),
         'calculate_grades_csv_url': reverse('calculate_grades_csv_class_code', kwargs={'course_id': unicode(course_key)}),
         'problem_grade_report_url': reverse('problem_grade_report', kwargs={'course_id': unicode(course_key)}),
+        'submissions_report_url': reverse('submissions_report', kwargs={'course_id': unicode(course_key)}),
         'download_class_submissions_url': reverse('download_class_submissions', kwargs={'course_id': unicode(course_key)}),
         'class_code_list': class_code_list,
         'assignment_names': assignment_names,

@@ -20,6 +20,7 @@ class DataDownload
 
     @$calculate_grades_csv_btn = @$section.find("input[name='calculate-grades-csv']'")
     @$problem_grade_report_csv_btn = @$section.find("input[name='problem-grade-report']'")
+    @$submissions_report_csv_btn = @$section.find("input[name='submissions-report']'")
     @$download_class_submissions_btn = @$section.find("input[name='download-class-submissions']'")
     @$download_submissions_select_method = @$section.find("input[name='download-class-submissions-select_method']")
     # point to class_code selector
@@ -43,6 +44,9 @@ class DataDownload
     @$class_code_select.change (e) =>
       @report_downloads.reload_report_downloads()
 
+    @$submissions_report_csv_btn.click (e) =>
+      @onClickGradeDownload @$submissions_report_csv_btn, gettext("Error generating submissions report. Please try again.")
+      
     @$calculate_grades_csv_btn.click (e) =>
       @onClickGradeDownload @$calculate_grades_csv_btn, gettext("Error generating grades. Please try again.")
 

@@ -64,11 +64,13 @@ from openedx.core.djangoapps.course_groups.models import CourseUserGroup
 from openedx.core.djangoapps.content.course_structures.models import CourseStructure
 from opaque_keys.edx.keys import UsageKey
 from openedx.core.djangoapps.course_groups.cohorts import add_user_to_cohort, is_course_cohorted
-from student.models import CourseEnrollment, CourseAccessRole
+from student.models import CourseEnrollment, CourseAccessRole, anonymous_id_for_user
 from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
 from instructor.utils import get_users_by_class_set
 from student.models import ClassSet, StudentProfile
+from instructor.views.api import _order_problems as order_submissions
+from submissions import api as sub_api
 
 # define different loggers for use within tasks and on client side
 TASK_LOG = logging.getLogger('edx.celery.task')
@@ -1080,6 +1082,77 @@ def upload_problem_responses_csv(_xmodule_instance_args, _entry_id, course_id, t
     upload_csv_to_report_store(rows, csv_name, course_id, start_date)
 
     return task_progress.update_task_state(extra_meta=current_step)
+
+def upload_submissions_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _task_input, action_name):
+    """
+    Generate a CSV containing all students' problem grades within a given
+    `course_id`.
+    """
+    start_time = time()
+    start_date = datetime.now(UTC)
+    status_interval = 100
+    class_code= _task_input.get('class_code',None)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+
+    class_set = ClassSet.objects.get(class_code=class_code)
+    enrolled_students = enrolled_students.filter(studentprofile__classSet=class_set)   
+
+    task_progress = TaskProgress(action_name, enrolled_students.count(), start_time)
+
+    # This struct encapsulates both the display names of each static item in the
+    # header row as values as well as the django User field names of those items
+    # as the keys.  It is structured in this way to keep the values related.
+    header_row = OrderedDict([('id', 'Student ID'), ('email', 'Email'), ('username', 'Username'),('first_name','First Name'),('last_name','Last Name')])
+
+
+    try:
+        course_structure = CourseStructure.objects.get(course_id=course_id)
+        blocks = course_structure.ordered_blocks
+        problems = order_submissions(blocks)
+    except CourseStructure.DoesNotExist:
+        return task_progress.update_task_state(
+            extra_meta={'step': 'Generating course structure. Please refresh and try again.'}
+        )
+
+    header = list(header_row.values())
+
+    for p in problems:
+        header.append(re.sub(" Questions","",problems[p]["chapter"])+": "+unicode(problems[p]["section_number"])+"_"+problems[p]["section_name"]+" - "+problems[p]["problem_name"])
+    rows = [header]
+
+    error_rows = [list(header_row.values()) + ['error_msg']]
+    current_step = {'step': 'Gathering Submissions'}
+
+
+    for student in enrolled_students:
+        for p in problems:
+            student_fields = [getattr(student, field_name) for field_name in header_row]
+            student_dict = {
+                'student_id': anonymous_id_for_user(student,course_id,save=False),
+                'item_id': p,
+                'course_id': course_id,
+                'item_type':'sga',
+            }
+            sub = sub_api.get_submissions(student_dict)
+            if sub:
+                student_fields = student_fields + ['true']
+            else:
+                student_fields = student_fields + ['false']
+        task_progress.attempted += 1
+        rows.append(student_fields)
+
+        task_progress.succeeded += 1
+        if task_progress.attempted % status_interval == 0:
+            task_progress.update_task_state(extra_meta=current_step)
+
+    # Perform the upload if any students have been successfully graded
+    if len(rows) > 1:
+        upload_csv_to_report_store(rows, 'submission_report', course_id, start_date, class_code=class_code)
+    # If there are any error rows, write them out as well
+    if len(error_rows) > 1:
+        upload_csv_to_report_store(error_rows, 'submission_report_err', course_id, start_date, class_code=class_code)
+
+    return task_progress.update_task_state(extra_meta={'step': 'Uploading CSV'})
 
 
 def upload_problem_grade_report(_xmodule_instance_args, _entry_id, course_id, _task_input, action_name):

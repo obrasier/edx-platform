@@ -105,6 +105,8 @@ urlpatterns = patterns(
         'instructor.views.api.calculate_grades_csv', name="calculate_grades_csv"),
     url(r'problem_grade_report$',
         'instructor.views.api.problem_grade_report', name="problem_grade_report"),
+    url(r'submissions_report$',
+        'instructor.views.api.submissions_report', name="submissions_report"),
 
     # Financial Report downloads..
     url(r'^list_financial_report_downloads$',
