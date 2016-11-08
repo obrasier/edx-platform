@@ -3906,7 +3906,7 @@ def _get_class_submissions(class_set, course_id, sort_by="problem", assignments=
 
                     s3path = _file_storage_path(block_loc,sha1,ext)
 
-                    chapter = problems[p]["chapter"]
+                    chapter = re.sub(' Questions','',problems[p]["chapter"])
                     section_number = problems[p]["section_number"]
                     section_name = problems[p]["section_name"]   
                     problem_number = problems[p]["problem_number"]
@@ -4006,7 +4006,7 @@ def _order_problems(blocks):
                 name_info = { 
                     "problem_number": p_index,
                     "problem_name": blocks[problem]['display_name'],
-                    "chapter":re.sub(' Questions','',assignment_type),
+                    "chapter": assignment_type,
                     "section_number": assignment_index,
                     "section_name": blocks[assignment]['display_name']
                 }   
