@@ -21,7 +21,7 @@ class DataDownload
     @$calculate_grades_csv_btn = @$section.find("input[name='calculate-grades-csv']'")
     @$problem_grade_report_csv_btn = @$section.find("input[name='problem-grade-report']'")
     @$download_class_submissions_btn = @$section.find("input[name='download-class-submissions']'")
-    
+    @$download_submissions_select_method = @$section.find("input[name='download-class-submissions-select_method']")
     # point to class_code selector
     @$class_code                      = @$section.find '.wrapper-member-select'
     @$class_code_select               = @$class_code.find '.member-lists-selector'
@@ -49,8 +49,17 @@ class DataDownload
     @$problem_grade_report_csv_btn.click (e) =>
       @onClickGradeDownload @$problem_grade_report_csv_btn, gettext("Error generating problem grade report. Please try again.")
 
-     @$download_class_submissions_btn.click (e) =>
+    @$download_class_submissions_btn.click (e) =>
       @onClickDownloadSubs @$download_class_submissions_btn, gettext("Error generating download link. Please try again.")
+
+    @$download_submissions_select_method.click (e) =>
+      @onClickSelectMethod @$download_submissions_select_method, @$section
+
+  onClickSelectMethod: (input) ->
+      if $('input["download-class-submissions-select_method"]:checked').val() == "all"
+        $("#assignments-select").attr("disabled",true)
+      else
+        $("#assignments-select").attr("disabled",false)
 
   onClickGradeDownload: (button, errorMessage) ->
       # Clear any CSS styling from the request-response areas
@@ -76,12 +85,20 @@ class DataDownload
       #$(".msg-error").css({"display":"none"})
       @clear_display()
       url = button.data 'endpoint'
+      assignments = []
+      @$section.find("#assignments-select :selected").each (i,selected) =>
+        assignments[i]=$(selected).val()
       $.ajax
         type: 'GET'
         dataType: 'json'
         url: url
-        aync: false
-        data: {class_code: @$class_code_select.val(), arrange_by: @$section.find("input[name='download-class-submissions-arrange_by']:checked").val()}
+        async: false
+        data: {
+          class_code: @$class_code_select.val(), 
+          arrange_by: @$section.find("input[name='download-class-submissions-arrange_by']:checked").val(),
+          assignment: assignments,
+          method: $('input["download-class-submissions-select_method"]:checked').val() 
+        }
         error: (std_ajax_err) =>
           @$reports_request_response_error.text errorMessage
           $(".msg-error").css({"display":"block"})

@@ -7,6 +7,8 @@ from django.conf.urls import patterns, url
 urlpatterns = patterns(
     '',
 
+    url(r'^get_assignment_names$',
+        'instructor.views.api.get_assignment_names', name="get_assignment_names"),
     url(r'^download_class_submissions$',
         'instructor.views.api.download_class_submissions', name="download_class_submissions"),
     url(r'^students_update_enrollment$',

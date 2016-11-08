@@ -85,13 +85,30 @@
 <p></p>
             <div class="download-class-submissions-form">
             <p>
+                <label for="download-class-submissions-select_method">Choose submission files from: </p>
+                <input type="radio" name="download-class-submissions-select_method" value="all" checked/> All weeks
+                <br/>
+                <input type="radio" name="download-class-submissions-select_method" value="select-weeks" /> Selected Weeks
+            </p>
+            <div class="download-class-submissions-assignments">
+                <select name="download-class-submissions-assignments-select" id="assignments-select" multiple disabled="true" style="width:30%;" >
+                    %for a in section_data['assignment_names']:
+                    <option value="${a}" selected>${a}</option>
+                    %endfor 
+                </select>
+            <p style="font-size:10pt;"><i>Hold down Ctrl or cmd key to select multiple options</i></p>
+            </div>
+            <div style="margin-top:10px">
+            <p>
                 <label for="download-class-submissions-arrange_by">Arrange folder structures as: </p>
                 <input type="radio" name="download-class-submissions-arrange_by" value="problem" checked/> Challenge/Section/Problem/Student.ext
                 <br/>
                 <input type="radio" name="download-class-submissions-arrange_by" value="student" /> Student/Challenge/Section/Problem.ext
             </p>
             <p><input type="button" name="download-class-submissions" value="${_("Download Submissions")}" data-endpoint="${ section_data['download_class_submissions_url'] }"/>
-            
+            </p>
+            </div>
+
             </div>
         <p class="download-submissions-response" style="font-style: italic;"></p>
     </div>

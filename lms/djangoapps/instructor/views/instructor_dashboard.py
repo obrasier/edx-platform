@@ -63,6 +63,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 
 from django.contrib.auth.models import User
 from student.helpers import get_my_classes, get_class_size, is_teacher, is_student, get_student_class_info
+from instructor.views.api import _get_assignment_names as get_assignment_names
 
 log = logging.getLogger(__name__)
 
@@ -787,6 +788,7 @@ def _section_data_download(course, access):
 def _section_grade_centre(course, access,class_code_list):
     """ Provide data for the corresponding dashboard section """
     course_key = course.id
+    assignment_names = get_assignment_names(course_key)
 
     section_data = {
         'section_key': 'data_download',
@@ -799,6 +801,7 @@ def _section_grade_centre(course, access,class_code_list):
         'problem_grade_report_url': reverse('problem_grade_report', kwargs={'course_id': unicode(course_key)}),
         'download_class_submissions_url': reverse('download_class_submissions', kwargs={'course_id': unicode(course_key)}),
         'class_code_list': class_code_list,
+        'assignment_names': assignment_names,
     }
     return section_data
 

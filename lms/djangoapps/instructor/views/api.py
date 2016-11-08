@@ -3757,6 +3757,30 @@ def validate_request_data_and_get_certificate(certificate_invalidation, course_k
     return certificate
 
 
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+def get_assignment_names(request, course_id):
+    """
+    Download submissions of class. (Doesn't query for individual student)
+
+    Takes post query parameters.
+        - class_code (required)
+        - list of problems (by index) 
+        - folder struc (week-problem > student) or (student > week-problem)
+    """
+    course = get_course_by_id(CourseKey.from_string(course_id))
+    staff_access = has_access(request.user,'staff',course)
+    teacher_access = has_access(request.user,'teacher',course)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden("Permission denied.")
+
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+
+    response = {'success': True, 'assignments': _get_assignment_names(course_id)}
+
+    return JsonResponse(response)
+
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -3779,6 +3803,12 @@ def download_class_submissions(request, course_id):
     #query parameters
     class_code = request.GET.get('class_code',None)
     arrange_by = request.GET.get('arrange_by',"problem")
+    assignments = request.GET.getlist('assignment[]',None)
+    method = request.GET.get('method','all')
+    if not method=='all':
+        log.warning(assignments)
+    if method=='all':
+        assignments = []
     if not class_code:
         return HttpResponseBadRequest("Invalid request.")        
 
@@ -3795,7 +3825,7 @@ def download_class_submissions(request, course_id):
 
     #just taking the whole class for now
     try:
-        submission_link = _get_class_submissions(class_set, course_id,sort_by = arrange_by)
+        submission_link = _get_class_submissions(class_set, course_id,sort_by = arrange_by, assignments=assignments)
         response = {'success': True, 'url': submission_link}
     except ValueError:
         return JsonResponse({'success': False,
@@ -3828,7 +3858,7 @@ def _file_storage_path(location, sha1, ext):
 class EmptySubmissionsList(Exception):
     pass
 
-def _get_class_submissions(class_set, course_id, sort_by="problem"):
+def _get_class_submissions(class_set, course_id, sort_by="problem", assignments=[]):
 
     if not ((sort_by == "problem") or (sort_by == "student")):
         raise ValueError('sort_by not valid input')
@@ -3852,54 +3882,57 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
     root = class_code + '_' + re.sub('\+','_',unicode(course_id).split(':',1)[-1]) + "_submissions_" + d
     #get class problems
     for p in problems:
-        block_loc = BlockUsageLocator.from_string(p)
-        for s in s_list:
-            student_dict = {
-                "student_id": s["anon_id"],
-                "item_id": p,
-                "course_id": course_id,
-                "item_type": 'sga',
-            }
-            #get submission answer
-            submissions = sub_api.get_submissions(student_dict)
-            if submissions:
-                sub = submissions[0]
+        log.warning(problems[p]["chapter"])
+        if (not assignments) or (assignments and problems[p]["chapter"] in assignments):
+            
+            block_loc = BlockUsageLocator.from_string(p)
+            for s in s_list:
+                student_dict = {
+                    "student_id": s["anon_id"],
+                    "item_id": p,
+                    "course_id": course_id,
+                    "item_type": 'sga',
+                }
+                #get submission answer
+                submissions = sub_api.get_submissions(student_dict)
+                if submissions:
+                    sub = submissions[0]
 
-                sha1 = sub['answer']['sha1']
-                sub_filename = sub['answer']['filename']
-                idx = sub_filename.index('.')
-                ext = sub_filename[idx:]  
-                s_name = s["last_name"]+'_'+s["first_name"]
+                    sha1 = sub['answer']['sha1']
+                    sub_filename = sub['answer']['filename']
+                    idx = sub_filename.index('.')
+                    ext = sub_filename[idx:]  
+                    s_name = s["last_name"]+'_'+s["first_name"]
 
-                s3path = _file_storage_path(block_loc,sha1,ext)
+                    s3path = _file_storage_path(block_loc,sha1,ext)
 
-                chapter = problems[p]["chapter"]
-                section_number = problems[p]["section_number"]
-                section_name = problems[p]["section_name"]   
-                problem_number = problems[p]["problem_number"]
-                problem_name = problems[p]["problem_name"]   
+                    chapter = problems[p]["chapter"]
+                    section_number = problems[p]["section_number"]
+                    section_name = problems[p]["section_name"]   
+                    problem_number = problems[p]["problem_number"]
+                    problem_name = problems[p]["problem_name"]   
+            
+                    #invalid characters
+                    problem_name = re.sub('[^\w\-\. ]','',problem_name)
+                    section_name = re.sub('[^\w\-\. ]','',section_name)
+
+                    if sort_by == "problem":
+                        filename = s_name+'-'+sub_filename
+                        folder = "/".join([root,chapter,unicode(section_number)+"_"+section_name,unicode(problem_number)+"_"+problem_name])
+                    elif sort_by == "student":
+                        filename = "problem"+unicode(problem_number)+"_"+problem_name+"_"+sub_filename
+                        folder = "/".join([root,s_name,chapter,unicode(section_number)+"_"+section_name])
+
+                    filename = re.sub(' ','_',filename)
+                    folder = re.sub(' ','_',folder)
+
+                    file_info = {
+                                    "S3Path": s3path,
+                                    "FileName": filename,
+                                    "Folder": folder,
+                                }
+                    file_dicts.append(file_info)
         
-                #invalid characters
-                problem_name = re.sub('[^\w\-\. ]','',problem_name)
-                section_name = re.sub('[^\w\-\. ]','',section_name)
-
-                if sort_by == "problem":
-                    filename = s_name+'-'+sub_filename
-                    folder = "/".join([root,chapter,unicode(section_number)+"_"+section_name,unicode(problem_number)+"_"+problem_name])
-                elif sort_by == "student":
-                    filename = unicode(problem_number)+"_"+problem_name+"_"+sub_filename
-                    folder = "/".join([root,s_name,chapter,unicode(section_number)+"_"+section_name])
-
-                filename = re.sub(' ','_',filename)
-                folder = re.sub(' ','_',folder)
-
-                file_info = {
-                                "S3Path": s3path,
-                                "FileName": filename,
-                                "Folder": folder,
-                            }
-                file_dicts.append(file_info)
-    
 
     if len(file_dicts) == 0:
         raise EmptySubmissionsList
@@ -3910,6 +3943,26 @@ def _get_class_submissions(class_set, course_id, sort_by="problem"):
     rds.setex("zip:"+ref, 300, json_payload)
 
     return (settings.ZIPPER_BASE+"/?ref=" + ref )
+    
+def _get_assignment_names(course_id):
+    """
+    Gives a list of strings for each assignment name (i.e. sequential blocks)
+    
+    Args:
+        course_id 
+    Returns:
+        a list of strings that give the name of the (format) of the sequential block    
+    """
+    assignments = []
+    blocks = CourseStructure.objects.get(course_id=course_id).ordered_blocks
+    
+    for block in blocks:
+        if blocks[block]['block_type']=='sequential':
+            block_format = blocks[block]['format']
+            if unicode(block_format) not in assignments and not unicode(block_format)=="None":
+                assignments.extend([unicode(block_format)])
+
+    return assignments
     
 def _order_problems(blocks):
     """
