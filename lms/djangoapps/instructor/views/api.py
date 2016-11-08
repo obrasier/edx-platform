@@ -2798,11 +2798,11 @@ def submissions_report(request, course_id):
      
     try:
         instructor_task.api.submit_calculate_submissions_csv_class_code(request, course_id, class_code)
-        success_status = _("The problem grade report is being created."
+        success_status = _("The submissions report is being created."
                            " To view the status of the report, see Pending Instructor Tasks below.")
         return JsonResponse({"status": success_status})
     except AlreadyRunningError:
-        already_running_status = _("A problem grade report is already being generated."
+        already_running_status = _("A submissions report is already being generated."
                                    " To view the status of the report, see Pending Instructor Tasks below."
                                    " You will be able to download the report when it is complete.")
         return JsonResponse({
