@@ -69,7 +69,7 @@ from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
 from instructor.utils import get_users_by_class_set
 from student.models import ClassSet, StudentProfile
-from instructor.views.api import _order_problems as order_submissions
+#from instructor.views.api import _order_problems as order_submissions
 from submissions import api as sub_api
 
 # define different loggers for use within tasks and on client side
@@ -1083,6 +1083,58 @@ def upload_problem_responses_csv(_xmodule_instance_args, _entry_id, course_id, t
 
     return task_progress.update_task_state(extra_meta=current_step)
 
+
+def _order_submissions(blocks):
+    """
+    Sort the blocks by the assignment type=edx-sga submissions  and assignment that it belongs to.
+
+    Args:
+        blocks (OrderedDict) - A course structure containing blocks that have been ordered
+                              (i.e. when we iterate over them, we will see them in the order
+                              that they appear in the course).
+
+    Returns:
+        an OrderedDict that gives heirarchal information and ordering for the problems.
+    """
+    problems = OrderedDict()
+    assignments = dict()
+    # First, sort out all the blocks into their correct assignments and all the
+    # assignments into their correct types.
+    for block in blocks:
+        # Put the assignments in order into the assignments list.
+        if blocks[block]['block_type'] == 'sequential':
+            block_format = blocks[block]['format']
+            if block_format not in assignments:
+                assignments[block_format] = OrderedDict()
+            assignments[block_format][block] = list()
+
+        # Put the problems into the correct order within their assignment.
+        if blocks[block]['block_type'] == 'edx_sga' and blocks[block]['graded'] is True:
+            current = blocks[block]['parent']
+            # crawl up the tree for the sequential block
+            while blocks[current]['block_type'] != 'sequential':
+                current = blocks[current]['parent']
+
+            current_format = blocks[current]['format']
+            assignments[current_format][current].append(block)
+
+    # Now that we have a sorting and an order for the assignments and problems,
+    # iterate through them in order to generate the header row.
+    for assignment_type in assignments:
+        for assignment_index, assignment in enumerate(assignments[assignment_type].keys(), start=1):
+            for p_index,problem in enumerate(assignments[assignment_type][assignment]):
+                name_info = {
+                    "problem_number": p_index,
+                    "problem_name": blocks[problem]['display_name'],
+                    "chapter": assignment_type,
+                    "section_number": assignment_index,
+                    "section_name": blocks[assignment]['display_name']
+                }
+                problems[problem] = name_info
+
+    return problems
+
+
 def upload_submissions_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _task_input, action_name):
     """
     Generate a CSV containing all students' problem grades within a given
@@ -1108,7 +1160,7 @@ def upload_submissions_csv_class_code(_xmodule_instance_args, _entry_id, course_
     try:
         course_structure = CourseStructure.objects.get(course_id=course_id)
         blocks = course_structure.ordered_blocks
-        problems = order_submissions(blocks)
+        problems = _order_submissions(blocks)
     except CourseStructure.DoesNotExist:
         return task_progress.update_task_state(
             extra_meta={'step': 'Generating course structure. Please refresh and try again.'}
