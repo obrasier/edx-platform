@@ -3949,11 +3949,11 @@ def _get_class_submissions(class_set, course_id, sort_by="problem", assignments=
 
                     sha1 = sub['answer']['sha1']
                     sub_filename = sub['answer']['filename']
-                    idx = sub_filename.index('.')
-                    ext = sub_filename[idx:]  
+                    split_name= sub_filename.split('.') #returns array
+                    ext = '.'+split_name[-1]
                     s_name = s["last_name"]+'_'+s["first_name"]
 
-                    s3path = _file_storage_path(block_loc,sha1,ext)
+                    s3path = _file_storage_path(block_loc,sha1,ext) #expects file extensions inclusive of period
 
                     chapter = re.sub(' Questions','',problems[p]["chapter"])
                     section_number = problems[p]["section_number"]
