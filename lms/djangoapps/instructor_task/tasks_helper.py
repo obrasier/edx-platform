@@ -710,7 +710,7 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
     whitelisted_user_ids = [entry.user_id for entry in certificate_whitelist]
 
     # Loop over all our students and build our CSV lists in memory
-    header = None
+    "first name", "last name",header = None
     rows = []
     err_rows = [["id", "username", "error_msg"]]
     current_step = {'step': 'Calculating Grades'}
@@ -749,7 +749,7 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
             if not header:
                 header = [section['label'] for section in gradeset[u'section_breakdown']]
                 rows.append(
-                    ["id", "email", "username", "grade"] + header + cohorts_header +
+                    ["id", "email", "username", "first name", "last name","grade"] + header + cohorts_header +
                     group_configs_header + teams_header +
                     ['Enrollment Track', 'Verification Status'] + certificate_info_header
                 )
@@ -799,7 +799,7 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
             # still have 100% for the course.
             row_percents = [percents.get(label, 0.0) for label in header]
             rows.append(
-                [student.id, student.email, student.username, gradeset['percent']] +
+                [student.id, student.email, student.username, student.first_name, student.last_name,gradeset['percent']] +
                 row_percents + cohorts_group_name + group_configs_group_names + team_name +
                 [enrollment_mode] + [verification_status] + certificate_info
             )
@@ -1228,7 +1228,7 @@ def upload_problem_grade_report(_xmodule_instance_args, _entry_id, course_id, _t
     # This struct encapsulates both the display names of each static item in the
     # header row as values as well as the django User field names of those items
     # as the keys.  It is structured in this way to keep the values related.
-    header_row = OrderedDict([('id', 'Student ID'), ('email', 'Email'), ('username', 'Username')])
+    header_row = OrderedDict([('id', 'Student ID'), ('email', 'Email'), ('username', 'Username'),('first_name','First Name'),('last_name','Last Name')])
 
     try:
         course_structure = CourseStructure.objects.get(course_id=course_id)
