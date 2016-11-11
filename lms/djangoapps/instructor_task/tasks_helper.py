@@ -710,7 +710,7 @@ def upload_grades_csv_class_code(_xmodule_instance_args, _entry_id, course_id, _
     whitelisted_user_ids = [entry.user_id for entry in certificate_whitelist]
 
     # Loop over all our students and build our CSV lists in memory
-    "first name", "last name",header = None
+    header = None
     rows = []
     err_rows = [["id", "username", "error_msg"]]
     current_step = {'step': 'Calculating Grades'}
