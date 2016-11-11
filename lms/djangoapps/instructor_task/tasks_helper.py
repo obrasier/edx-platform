@@ -1177,8 +1177,8 @@ def upload_submissions_csv_class_code(_xmodule_instance_args, _entry_id, course_
 
 
     for student in enrolled_students:
+        student_fields = [getattr(student, field_name) for field_name in header_row]
         for p in problems:
-            student_fields = [getattr(student, field_name) for field_name in header_row]
             student_dict = {
                 'student_id': anonymous_id_for_user(student,course_id,save=False),
                 'item_id': p,
@@ -1187,9 +1187,10 @@ def upload_submissions_csv_class_code(_xmodule_instance_args, _entry_id, course_
             }
             sub = sub_api.get_submissions(student_dict)
             if sub:
-                student_fields = student_fields + ['true']
+                student_fields.append("true")
             else:
-                student_fields = student_fields + ['false']
+                student_fields.append("false")
+
         task_progress.attempted += 1
         rows.append(student_fields)
 
