@@ -2633,13 +2633,13 @@ class CompetitionSubmission(models.Model):
     contact_email = models.CharField(blank=False, max_length=255, db_index=True)
 
     device_name = models.CharField(blank=False, max_length=255, db_index = True)
-    device_description = models.CharField(blank=False, max_length=767, db_index = True)#roughly 150 words
+    device_description = models.TextField(blank=False, max_length=700, db_index=False)#roughly 150 words
 
     acknowledge_toc = models.BooleanField(default=False)
     
     viewed = models.BooleanField(default=False)
     short_listed = models.BooleanField(default=False)
-    judging_comments = models.CharField(blank=True,max_length=700, db_index = True)#roughly 150 words
+    judging_comments = models.TextField(blank=True,max_length=700, db_index = False)#roughly 150 words
 
     def __repr__(self):
         return repr(dict(
