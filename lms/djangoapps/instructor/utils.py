@@ -1,12 +1,15 @@
 """
 Helpers for instructor app.
 """
+import json
+import pytz
+import datetime
 
 from xmodule.modulestore.django import modulestore
 
 from courseware.model_data import FieldDataCache
 from courseware.module_render import get_module
-from student.models import ClassSet, StudentProfile
+from student.models import ClassSet, StudentProfile, CompetitionSubmission
 
 class DummyRequest(object):
     """Dummy request"""
@@ -75,3 +78,35 @@ def get_class_codes_of_teacher(teacher_user, course_key):
             'class_name': class_set.class_name,
         }
     return map(extract_class_info,class_set_list)
+
+def get_competition_submissions(class_code):
+    submissions = CompetitionSubmission.objects.filter(class_set__class_code=class_code).order_by('-attempt_number')
+    if submissions.count()>0:
+        return submissions[0]
+    else:
+        return None
+    
+def get_last_submission_summary(class_code):
+    sub = get_competition_submissions(class_code)
+    if sub:
+        count = 0
+        video = json.loads(sub.video_entry)
+        media = json.loads(sub.media_release)
+        src = json.loads(sub.src_code_entry)
+
+        if video.get('video_file_name',None):
+            count+=1
+        if media.get('media_file_names',None):
+            count+=len(media['media_file_names'])
+        if src.get('src_file_names',None):
+            count+=len(media['src_file_names'])
+
+        return {
+                'class_code':class_code,
+                'attempt': sub.attempt_number,
+                'received': sub.submitted_at.astimezone(pytz.timezone('Australia/Sydney')).strftime("%Y-%m-%d %H:%M %Z"),
+                'files': count,
+                'url': video.get('url',None),
+        }
+    else:
+        return None

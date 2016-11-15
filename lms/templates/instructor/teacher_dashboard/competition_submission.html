@@ -13,6 +13,35 @@
        <i class="fa fa-check" aria-hidden="true"></i> Thanks! We received your entry. You will be contacted by the 7th of December if you have become a successful finalist. If you would like to re-submit, please use the form again, as the latest submission will be used.
      % endif
 </div>
+% if len(section_data['submission_history']) > 0:
+<div class="submission-history">
+    <h2>Entry Submission History </h2>
+    <ul>
+    % for c in section_data['submission_history']:
+    <li>
+    <div class="teacher-dashboard-class-item">
+            <div class="teacher-dashboard-class-header" >
+                ${c["class_code"]}
+                <i class="fa fa-chevron-down" aria-hidden="true" style="float: right"></i>
+        </div>
+        <div class="teacher-dashboard-class-body" style="display:none;">
+            <ul>
+                <li> Number of Attempts:&nbsp; ${c["attempt"]}
+                <li> Latest Entry Received:&nbsp; ${c["received"]}
+                <li>  Number of Files Attached:&nbsp;${c["files"]}
+                % if c["url"]:
+                <li> Video URL: &nbsp;${c["url"]}
+                % endif
+            </ul>
+        </div>
+        <div class="teacher-dashboard-class-timetable">
+        </div>
+    </div>
+    % endfor
+</div>
+% endif
+
+<h2>Entry Form</h2>
 <div class="competition-description">
 <p>Select the class you would like to submit for, check your contact details, and fill in the rest of the entry form. Note we prefer the supply of a url for the video, using a 3rd party service. If you choose to upload your video using this form, please be patient. If there is a drop in connection, you may have to resubmit. As part of your entry, you are required to agree to the Competition's <a href = "/competition_tos" target="_blank">Terms and Conditions</a>. <i>Entries close 23:59:59 on the 18th of November AEDT (UTC+11)</i></p>
 <p> (*required fields)</p></div>
@@ -141,7 +170,12 @@
 </div>
 </div>
 
-
+<script>
+    $(".teacher-dashboard-class-header").click(function () {
+        $(this).next().toggle();
+        $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
+    });
+</script>
 <style>
     .teacher-dashboard-competition-view textarea{
         height: 200px;
@@ -151,7 +185,7 @@
         line-height: 1.5;
         font-size: 12pt;
     }
-    .competition-form-success{
+    .competition-form-error{
         color: red;
         font-weight: bold;
         margin-bottom: 30px;

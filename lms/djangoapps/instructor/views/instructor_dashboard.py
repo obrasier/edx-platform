@@ -62,7 +62,7 @@ from django.forms.models import model_to_dict
 from student.helpers import is_teacher, get_my_classes, get_class_size
 from student.models import ClassSet, CompetitionSubmission
 
-from instructor.utils import get_class_codes_of_teacher
+from instructor.utils import get_class_codes_of_teacher, get_last_submission_summary
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.clickjacking import xframe_options_exempt
 
@@ -163,10 +163,20 @@ def teacher_dashboard(request, course_id):
     new_class_dict.update({'class_set_form': class_set_form})
     class_code_list = get_class_codes_of_teacher(request.user,course_key)
 
+    submission_history = []
+
+    for c in class_code_list:
+        s = get_last_submission_summary(c['class_code'])
+        if s:
+            submission_history.append(s)
+
+
     # arrange competition section, and update with any POST results
     competition_section = _section_competition_submission(course,access,class_code_list)
     competition_section.update(competition_dict)
+    competition_section.update({'submission_history': submission_history})
     
+
     # competition success redirection
     if request.method =='POST' and competition_section['success'] == True:
         return HttpResponseRedirect(reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+'?success=true#view-competition_submission')
