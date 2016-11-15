@@ -11,6 +11,7 @@ from student.models import (
     UserProfile, UserTestGroup, CourseEnrollmentAllowed, DashboardConfiguration, CourseEnrollment, Registration,
     PendingNameChange, CourseAccessRole, LinkedInAddToProfileConfiguration, StudentProfile, TeacherProfile, School, ClassSet,
     ClassTime, Subject,
+    CompetitionSubmission,
 )
 from student.roles import REGISTERED_ACCESS_ROLES
 
@@ -191,6 +192,11 @@ class ClassTimeAdmin(admin.ModelAdmin):
 class SubjectAdmin(admin.ModelAdmin):
     pass
 
+class CompetitionSubmissionAdmin(admin.ModelAdmin):
+    list_filter = ('short_listed',)
+    list_display = ('class_set','school','device_name')
+
+admin.site.register(CompetitionSubmission, CompetitionSubmissionAdmin)
 
 admin.site.register(StudentProfile, StudentProfileAdmin)
 

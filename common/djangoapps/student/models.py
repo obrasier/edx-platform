@@ -59,6 +59,8 @@ import struct
 from Crypto.Cipher import DES
 from .utils import base36encode, base36decode
 from django.core.validators import RegexValidator, ValidationError
+from jsonfield import JSONField
+from django_extensions.db.fields import UUIDField
 
 #For RandomIdModel
 import string
@@ -79,7 +81,6 @@ UNENROLLED_TO_ENROLLED = 'from unenrolled to enrolled'
 ALLOWEDTOENROLL_TO_UNENROLLED = 'from allowed to enroll to enrolled'
 UNENROLLED_TO_UNENROLLED = 'from unenrolled to unenrolled'
 DEFAULT_TRANSITION_STATE = 'N/A'
-
 TRANSITION_STATES = (
     (UNENROLLED_TO_ALLOWEDTOENROLL, UNENROLLED_TO_ALLOWEDTOENROLL),
     (ALLOWEDTOENROLL_TO_ENROLLED, ALLOWEDTOENROLL_TO_ENROLLED),
@@ -2593,4 +2594,68 @@ class Subject(models.Model):
     
     def __unicode__(self):
         return self.description
+
+class CompetitionSubmission(models.Model):
+    """
+    A single response by a class for a competition.
+
+    """
+    MAXSIZE = 1024*1024*10  # 10MB
+
+    uuid = UUIDField(version=1, db_index=True)
+
+    class_set = models.ForeignKey(ClassSet)
+
+    # Which attempt is this? Consecutive Submissions do not necessarily have
+    # increasing attempt_number entries -- e.g. re-scoring a buggy problem.
+    attempt_number = models.PositiveIntegerField()
+
+    # submitted_at is separate from created_at to support re-scoring and other
+    # processes that might create Submission objects for past user actions.
+    submitted_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    # When this row was created.
+    created_at = models.DateTimeField(editable=False, default=timezone.now, db_index=True)
+
+    # The answer (JSON-serialized)
+    # NOTE: previously, this field was a TextField named `raw_answer`.
+    # Since JSONField is a subclass of TextField, we can use it as a drop-in
+    # replacement for TextField that performs JSON serialization/deserialization.
+    # For backwards compatibility, we override the default database column
+    # name so it continues to use `raw_answer`.
+    media_release = JSONField(blank=True, db_column="raw_answer")
+    src_code_entry = JSONField(blank=True, db_column="src_code")
+    video_entry = JSONField(blank=True, db_column="video")
+
+    school = models.ForeignKey(School,db_index = True)
+    contact_name = models.CharField(blank=False, max_length=255, db_index=True)
+    contact_ph = models.CharField(blank=False, max_length=255, db_index=True) #incase of winning
+    contact_email = models.CharField(blank=False, max_length=255, db_index=True)
+
+    device_name = models.CharField(blank=False, max_length=255, db_index = True)
+    device_description = models.CharField(blank=False, max_length=767, db_index = True)#roughly 150 words
+
+    acknowledge_toc = models.BooleanField(default=False)
+    
+    viewed = models.BooleanField(default=False)
+    short_listed = models.BooleanField(default=False)
+    judging_comments = models.CharField(blank=True,max_length=700, db_index = True)#roughly 150 words
+
+    def __repr__(self):
+        return repr(dict(
+            uuid=self.uuid,
+            class_set=self.class_set,
+            attempt_number=self.attempt_number,
+            submitted_at=self.submitted_at,
+            created_at=self.created_at,
+            media_release=self.media_release,
+            src_code_entry=self.src_code_entry,
+            video_entry=self.video_entry,
+        ))
+
+    def __unicode__(self):
+        return u"Competition Submission {}".format(self.uuid)
+
+    class Meta:
+        ordering = ["-submitted_at", "-id"]
 

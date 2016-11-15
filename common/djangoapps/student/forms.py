@@ -24,7 +24,7 @@ from util.password_policy_validators import (
     validate_password_complexity,
     validate_password_dictionary,
 )
-from student.models import StudentProfile, TeacherProfile, School, ClassSet, Subject 
+from student.models import StudentProfile, TeacherProfile, School, ClassSet, Subject, CompetitionSubmission 
 from django.core.validators import RegexValidator
 from student.helpers import is_teacher
 
@@ -547,3 +547,37 @@ class OtherSubjectForm(ModelForm):
             instance = super(OtherSubjectForm, self).save(commit=False)
             default_list = False
             instance.save()
+
+class CompetitionSubmissionForm(ModelForm):
+    
+    acknowledge_toc = forms.BooleanField(required = True,  help_text='By checking the box, you acknowledge you agree to the <a href="/competition_tos" target="_blank">Terms and Conditions</a> of the MadMaker Competition.', label='I have read and agree with the Terms and Conditions',error_messages={'required': "You must check the box to acknowledge that you agree to the Terms and Conditions of the Competition."})
+
+    class Meta:
+        model = CompetitionSubmission
+
+        fields = ['contact_name','contact_ph','contact_email','device_name','device_description','acknowledge_toc']
+        labels = {
+            'contact_name': _('Contact Name'),
+            'contact_ph':_('Contact Phone Number'),
+            'contact_email':_('Contact E-mail'),
+            'device_name':_('Device/Project Name'),
+            'device_description':_('Device/Project Description'),
+        }
+        help_texts = {
+            'contact_name': _('Confirm the contact name.'),
+            'contact_ph':_('Confirm your contact phone number, for contacting winners.'),
+            'contact_email':_('Confirm your contact e-mail.'),
+            'device_name': _('What is the name of your device?'),
+            'device_description': _('In 100 words or less, provide a description of the purpose of the device and how it works. Details should be found in the video.'),
+        }
+
+        error_messages = {
+            'acknowledge_toc': {
+            },
+        }
+        
+
+        widgets = {
+            'device_description': forms.Textarea()
+        }
+

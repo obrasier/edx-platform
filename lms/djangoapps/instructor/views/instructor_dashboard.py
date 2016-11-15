@@ -8,6 +8,11 @@ from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 import uuid
 import pytz
+import mimetypes
+import json
+import pdb
+import os
+import hashlib
 
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -52,10 +57,10 @@ from class_dashboard.dashboard_data import get_section_display_name, get_array_s
 from .tools import get_units_with_due_date, title_or_url, bulk_email_is_enabled_for_course
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from .tools import get_student_from_identifier
-from student.forms import ClassSetForm
+from student.forms import ClassSetForm, CompetitionSubmissionForm
 from django.forms.models import model_to_dict
 from student.helpers import is_teacher, get_my_classes, get_class_size
-from student.models import ClassSet
+from student.models import ClassSet, CompetitionSubmission
 
 from instructor.utils import get_class_codes_of_teacher
 from django.contrib.admin.views.decorators import staff_member_required
@@ -64,6 +69,9 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.contrib.auth.models import User
 from student.helpers import get_my_classes, get_class_size, is_teacher, is_student, get_student_class_info
 from instructor.views.api import _get_assignment_names as get_assignment_names
+
+from django.core.files.storage import default_storage
+from django.core.files import File
 
 log = logging.getLogger(__name__)
 
@@ -134,29 +142,45 @@ def teacher_dashboard(request, course_id):
     is_white_label = CourseMode.is_white_label(course_key)
     
     class_form_dict = {}
+    class_set_form = ClassSetForm()
+    competition_form = CompetitionSubmissionForm(initial={'contact_email':request.user.email,'contact_name':" ".join([request.user.first_name,request.user.last_name]),'contact_ph':request.user.teacherprofile.phone})
+    competition_dict = {'competition_submission_form':competition_form}
 
     if request.method == 'POST':
-        class_set_form = ClassSetForm(request.POST.copy())
-        if class_set_form.is_valid():
-            _create_new_class(class_set_form, course_key, request.user)
-            class_form_dict.update( {'success': 'Class successfully added!'})
-            return HttpResponseRedirect(reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+'#view-my_classes')
-            #class_set_form = ClassSetForm() # refresh to blank form
+        if request.POST.get("formtype") == "competition":
+            competition_dict.update(_competition_submission_form_handler(request,course_id))
         else:
-            pass                            # errors will be updated
-    else:
-        class_set_form = ClassSetForm()
-    
+            class_set_form = ClassSetForm(request.POST.copy())
+            if class_set_form.is_valid():
+                _create_new_class(class_set_form, course_key, request.user)
+                class_form_dict.update( {'success': 'Class successfully added!'})
+                return HttpResponseRedirect(reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+'#view-my_classes')
+                #class_set_form = ClassSetForm() # refresh to blank form
+            else:
+                pass                            # errors will be updated
 
     new_class_dict = _section_my_classes(course,access,request.user)
     new_class_dict.update({'class_set_form': class_set_form})
     class_code_list = get_class_codes_of_teacher(request.user,course_key)
+
+    # arrange competition section, and update with any POST results
+    competition_section = _section_competition_submission(course,access,class_code_list)
+    competition_section.update(competition_dict)
+    
+    # competition success redirection
+    if request.method =='POST' and competition_section['success'] == True:
+        return HttpResponseRedirect(reverse('teacher_dashboard',kwargs={'course_id':unicode(course_key)})+'?success=true#view-competition_submission')
+    
+    # after competition success redirection
+    if request.method == 'GET' and request.GET.get('success',None)=="true":
+        competition_section.update({'success': True})
     
     sections = [
         #_section_course_info(course, access),
         new_class_dict,
         _section_my_students(course, access, is_white_label, request.user, class_code_list),
         _section_grade_centre(course, access,class_code_list),
+        competition_section,
     ]
     
     context = {
@@ -165,6 +189,164 @@ def teacher_dashboard(request, course_id):
     }
 
     return render_to_response('instructor/teacher_dashboard/teacher_dashboard.html', context)
+
+def _competition_submission_form_handler(request,course_id):
+    """
+    Handles validating the competition submission form.
+    
+    Validation Rules
+    - Basic Form Rules
+    - Either video or URL must be uploaded
+    - All file sizes must be under 20MB
+
+    - If all rules are satisfied, calls function _upload_competition_submission
+      to handle the file storage and create a CompetitionSubmission model
+
+    Returns: A dictionary of fields to be updated to the section data by the parent view.
+    """
+    competition_dict = {}
+    competition_dict['video_url_errors']=""
+    competition_form= CompetitionSubmissionForm(request.POST.copy()) 
+    competition_dict['success'] = False # presumes unsuccessful
+    if competition_form.is_valid():
+        log.warning("Form is valid")
+        if not (request.FILES.get('video_upload',False) or request.POST.get('video_url',False)):
+            competition_dict.update({'video_url_errors':"You require at least a File Upload or URL."})
+        else:
+            # upload and process the submission fields and files
+            success = _upload_competition_submission(request,course_id,competition_form)
+            competition_dict.update(success)
+            
+    else:
+        log.warning("Form is invalid") 
+        
+    if not competition_dict['success']:
+        competition_dict['competition_submission_form'] = competition_form #assume for now that the form will need to be returned this way, unless there is a success
+
+    return competition_dict
+
+def _upload_competition_submission(request,course_id,competition_form):
+    """
+    Handles the entry of a new submission
+    """
+    try:
+        course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+        class_code = request.POST.get('class_code')
+        class_set = ClassSet.objects.get(class_code=class_code)
+
+        video_entry = {}
+        video_url = request.POST.get('video_url',None)
+        video_file = request.FILES.get('video_upload',None)
+
+        media_entry = {}
+        media_release_files = request.FILES.getlist('media_release_upload')
+
+        src_files = request.FILES.getlist('src_upload')
+        src_entry = {}
+
+        # Create entry (without committing to writing to the db yet)
+        entry = CompetitionSubmission(
+            device_name=competition_form.cleaned_data['device_name'],
+            device_description = competition_form.cleaned_data['device_description'],
+            contact_name = competition_form.cleaned_data['contact_name'],
+            contact_ph = competition_form.cleaned_data['contact_ph'],
+            contact_email = competition_form.cleaned_data['contact_email'],
+            acknowledge_toc = competition_form.cleaned_data['acknowledge_toc'],
+            attempt_number = CompetitionSubmission.objects.filter(class_set__class_code=class_code).count()+1,
+            class_set = class_set,
+            school = class_set.school,
+        )
+
+        # first find out how many submissions this class has made
+            # first prepare the JSON additions tos 
+        # if there is an easy video URL (sweet no problems)
+        ###
+        # Video Upload
+        ###
+        if video_url:
+            video_entry['url'] = request.POST.get('video_url')
+        
+        if video_file:
+            date = datetime.date.today().isoformat()
+            sha1 = _comp_get_sha1(video_file.name,unicode(course_key),class_code,date)
+            path = _comp_file_storage_path(sha1,video_file.name,course_key,class_code,entry.attempt_number,'video')
+            video_entry['video_file_sha1'] = sha1
+            video_entry['video_file_mimetype'] = mimetypes.guess_type(video_file.name)[0] 
+            video_entry['video_file_name'] = video_file.name
+            if not default_storage.exists(path):
+                default_storage.save(path,File(video_file.file))
+            
+        entry.video_entry = json.dumps(video_entry)
+        
+        ###
+        # Media Release
+        ###
+        if len(media_release_files)>0:
+            media_entry['media_file_names'] = []
+            media_entry['media_file_sha1s'] = []
+            media_entry['media_file_mimetypes'] = []
+
+        for f in media_release_files:
+            date = datetime.date.today().isoformat()
+            sha1 = _comp_get_sha1(f.name,unicode(course_key),class_code,date)
+            path = _comp_file_storage_path(sha1,f.name,course_key,class_code,entry.attempt_number,'media')
+            media_entry['media_file_sha1s'].append(sha1)
+            media_entry['media_file_mimetypes'].append(mimetypes.guess_type(f.name)[0])
+            media_entry['media_file_names'].append(f.name)
+
+            if not default_storage.exists(path):
+                default_storage.save(path,File(f.file))
+            
+        entry.media_release = json.dumps(media_entry)
+
+        ###
+        # Src Upload
+        ###
+        if len(media_release_files)>0:
+            src_entry['src_file_names'] = []
+            src_entry['src_file_sha1s'] = []
+            src_entry['src_file_mimetypes'] = []
+
+        for f in src_files:
+            date = datetime.date.today().isoformat()
+            sha1 = _comp_get_sha1(f.name,unicode(course_key),class_code,date)
+            path = _comp_file_storage_path(sha1,f.name,course_key,class_code,entry.attempt_number,'src')
+            src_entry['src_file_sha1s'].append(sha1)
+            src_entry['src_file_mimetypes'].append(mimetypes.guess_type(f.name)[0])
+            src_entry['src_file_names'].append(f.name)
+
+            if not default_storage.exists(path):
+                default_storage.save(path,File(f.file))
+
+        entry.src_code_entry = json.dumps(src_entry)
+
+        entry.save()
+        log.warning("Saved model")
+        return {'success': True}
+
+    except Exception:
+        return {'success': False, 'error_msg': True }
+
+def _comp_file_storage_path(sha1, filename,course_key,class_code,attempt,sub_type):
+    path = (
+        'competition_submissions/{course_key.org}/{course_key.course}/{class_code}/'
+        '{attempt}/{sub_type}/{sha1}{ext}'.format(
+            course_key=course_key,
+            sha1=sha1,
+            class_code=class_code,
+            sub_type=sub_type,
+            attempt=attempt,
+            ext=os.path.splitext(filename)[1]
+        )
+    )
+    return path
+
+def _comp_get_sha1(filename,course_id,class_code,date):
+    sha1 = hashlib.sha1()
+    sha1.update(course_id)
+    sha1.update(class_code)
+    sha1.update(date)
+    return sha1.hexdigest()
 
     
 def _create_new_class(form, course_key, user):
@@ -806,6 +988,26 @@ def _section_grade_centre(course, access,class_code_list):
     }
     return section_data
 
+def _section_competition_submission(course,access,class_code_list):
+    """ Provide data for the corresponding dashboard section """
+    
+    course_key = course.id
+    section_data = {
+        'section_key': 'competition_submission',
+        'section_display_name': _('Competition'),
+        'access': access,
+        #'submit_entry_url': reverse('', kwargs={'course_id': unicode(course_key)}),
+        'upload_file_url': 'upload_file',
+        'class_code_list': class_code_list,
+        'competition_submission_form': CompetitionSubmissionForm(),
+        'video_upload_errors': "",
+        'video_url_errors': "",
+        'media_release_upload_errors': "",
+        'src_upload_errors': "",
+        'success': False,
+        'error_msg': False,
+    }
+    return section_data
 
 def null_applicable_aside_types(block):  # pylint: disable=unused-argument
     """
