@@ -1,0 +1,347 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%page args="section_data"/>
+<% comp_form=section_data['competition_submission_form'] %>
+
+<div class="teacher-dashboard-competition-view">
+<div class="competition-form-error">
+    % if section_data['error_msg']:
+        There was an error uploading your files. Please try again. If error persists, contact ${settings.CONTACT_EMAIL} .
+    % endif
+</div>
+<div class="competition-form-success">
+     % if section_data['success']:
+       <i class="fa fa-check" aria-hidden="true"></i> Thanks! We received your entry. You will be contacted by the 7th of December if you have become a successful finalist. If you would like to re-submit, please use the form again, as the latest submission will be used.
+     % endif
+</div>
+<div class="competition-description">
+For more details, see the Competition's Terms and Conditions.
+</div>
+<div class="competition-form">
+        <form id="create-class-set" action="teacher#view-competition_submission" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="formtype" value="competition">
+            <div id="form-errors">
+                ${ comp_form.non_field_errors() }
+            </div>
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrf_token}">
+
+        <table class="class_set_form_table">
+        <tbody>
+            <tr>
+                <th><label for="class_code">Class</label></th>
+                <td class="td-field">
+        <select id="member-lists-selector-3" name="class_code" class="member-lists-selector">
+        %if len(section_data['class_code_list']) > 0:
+            %for c in section_data['class_code_list']:
+                <option value="${c['class_code']}">${c['class_code']}: ${c['short_name']}</option>
+            %endfor
+        %else:
+            <option>No classes available.</option>
+        %endif
+    </select>
+                </td>
+                <td class="td-helptext">
+                Choose the class you wish to submit on behalf of. 
+                </td>
+            </tr>
+        % for field in comp_form:
+        % if not field.name == "acknowledge_toc":
+            <tr>
+                <th>
+                    <p> ${ field.label_tag() }
+                    %if field.field.required:
+                        &#42;
+                    %endif
+                    </p>
+                </th>
+                <td class="td-field">
+                    ${ field }
+                    ${ field.field.widget}
+                </td>
+                <td class="td-helptext">
+                    % if field.help_text:
+                        ${ field.help_text }
+                    % endif
+                    <p> ${ field.errors } </p>
+                </td>
+            </tr>
+        % endif
+        % endfor
+            <tr id = "video-url-field">
+                <th>
+                    <label>Video URL</label>
+                </th>
+                <td class="td-field">
+                    <input class="text-input" name="video_url">
+                </td>
+                <td class="td-helptext">
+                    Upload a URL location using a storage service like YouTube, Dropbox, GoogleDrive, WeTransfer, or Sendspace, with the appropriate privacy rules. You can use #MadMaker2016 if you'd like to promote your submission on social media. Or alternatively, you can..
+                    <ul class="errorlist"><li> ${ section_data['video_url_errors'] }</li></ul> 
+                </td>
+                </tr>
+                <th>
+                    <label>Upload Video File</label>
+                </th>
+                <td class="td-field">
+                    <input class="fileupload" type="file" name="video_upload">
+                </td>
+                <td class="td-helptext">
+                    Max file size is 10MB
+                    <p> ${ section_data['video_upload_errors'] } </p>
+                </td>
+            </tr>
+
+            <tr id = "media-release-upload-field">
+                <th>
+                    <label>Upload Media Release File</label>
+                </th>
+                <td class="td-field">
+                    <input class="fileupload" type="file" name="media_release_upload" multiple>
+                </td>
+                <td class="td-helptext">
+                    Each student that can be facially recognised in the video is required to have a signed <a href="/asset-v1:SydneyX+MM16+2016+type@asset+block/media_release.pdf" target="_blank">Media Release Form</a> by a parent/guardian. Upload any of these forms.
+                    <p> ${ section_data['media_release_upload_errors'] } </p>
+                </td>
+            </tr>
+            <tr id = "src-upload-field">
+                <th>
+                    <label>Upload Source Code File</label>
+                </th>
+                <td class="td-field">
+                    <input class="fileupload" type="file" name="src_upload">
+                </td>
+                <td class="td-helptext">
+                    Ensure this is archived into a compressed form. E.g. zip, rar, gz, tar etc.
+                    <p> ${ section_data['src_upload_errors'] } </p>
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    <p> ${ comp_form['acknowledge_toc'].label_tag() }
+                    %if comp_form['acknowledge_toc'].field.required:
+                        &#42;
+                    %endif
+                    </p>
+                </th>
+                <td class="td-field">
+                    ${ comp_form['acknowledge_toc'] }
+                    ${ comp_form['acknowledge_toc'].field.widget }
+                </td>
+                <td class="td-helptext">
+                        ${ comp_form['acknowledge_toc'].help_text }
+                        <p>${ comp_form['acknowledge_toc'].errors }</p>
+                </td>
+            </tr>
+        </tbody>
+        </table>
+
+            <p>
+                <input type="submit" value="Submit" />
+            </p>
+        </form>
+</div>
+</div>
+<script>
+        function render_upload(state) {
+            // Add download urls to template context
+            state.error = state.error ? state.error : false;
+
+            // Render template
+            var content = $(element).find("#upload-content").html(template(state));
+
+            // Set up file upload
+            $(content).find(".fileupload").fileupload({
+                url: this.attr(data-endpoint),
+                add: function(e, data) {
+                    var do_upload = $(content).find(".upload").html('');
+                    $('<button/>')
+                        .text('Upload ' + data.files[0].name)
+                        .appendTo(do_upload)
+                        .click(function() {
+                            do_upload.text("Uploading...");
+                            data.submit();
+                        });
+                },
+                progressall: function(e, data) {
+                    var percent = parseInt(data.loaded / data.total * 100, 10);
+                    $(content).find(".upload").text(
+                        "Uploading... " + percent + "%");
+                },
+                fail: function(e, data) {
+                    /**
+                     * Nginx and other sanely implemented servers return a 
+                     * "413 Request entity too large" status code if an 
+                     * upload exceeds its limit.  See the 'done' handler for
+                     * the not sane way that Django handles the same thing.
+                     */
+                    if (data.jqXHR.status == 413) {
+                        /* I guess we have no way of knowing what the limit is
+                         * here, so no good way to inform the user of what the
+                         * limit is.
+                         */
+                        state.error = "The file you are trying to upload is too large."
+                    }
+                    else {
+                        // Suitably vague
+                        state.error = "There was an error uploading your file.";
+
+                        // Dump some information to the console to help someone
+                        // debug.
+                        console.log("There was an error with file upload.");
+                        console.log("event: ", e);
+                        console.log("data: ", data);
+                    }
+                    render_upload(state);
+                },
+                done: function(e, data) { 
+                    /* When you try to upload a file that exceeds Django's size
+                     * limit for file uploads, Django helpfully returns a 200 OK
+                     * response with a JSON payload of the form:
+                     * 
+                     *   {'success': '<error message'}
+                     * 
+                     * Thanks Obama!
+                     */
+                    if (data.result.success !== undefined) {
+                        // Actually, this is an error
+                        state.error = data.result.success;
+                        render_upload(state);
+                    }
+                    else {
+                        // The happy path, no errors
+                        render_upload(data.result); 
+                    }
+                }
+            });
+        }
+
+    function xblock($, _) {
+            var block = $(element).find(".upload-file-test");
+            var state = block.attr("data-state");
+            render_upload(JSON.parse(state));
+    }
+
+    element = $('.teacher-dashboard-competition-view');
+    if (require === undefined) { 
+        /** 
+         * The LMS does not use require.js (although it loads it...) and
+         * does not already load jquery.fileupload.  (It looks like it uses
+         * jquery.ajaxfileupload instead.  But our XBlock uses 
+         * jquery.fileupload.
+         */
+        function loadjs(url) {
+            $("<script>")
+                .attr("type", "text/javascript")
+                .attr("src", url)
+                .appendTo(element);
+        }
+        loadjs("/static/js/vendor/jQuery-File-Upload/js/jquery.iframe-transport.js");
+        loadjs("/static/js/vendor/jQuery-File-Upload/js/jquery.fileupload.js");
+        xblock($, _);
+    }
+var button = document.getElementById('add-button'); // Assumes element with id='button'
+
+button.onclick = function() {
+    var div = document.getElementById('teacher-dashboard-class-form');
+    if (div.style.display !== 'none') {
+        div.style.display = 'none';
+    }
+    else {
+        div.style.display = 'block';
+    }
+};
+$(".teacher-dashboard-class-header").click(function () {
+    $(this).next().toggle();
+    $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
+});
+
+
+if(document.getElementsByClassName("errorlist").length >0){
+    var div = document.getElementById('teacher-dashboard-class-form');
+    div.style.display='block';
+}
+if(document.getElementsByClassName("empty-data").length > 0){
+    var div = document.getElementById('teacher-dashboard-class-form');
+    div.style.display='block';
+}
+
+</script>
+
+<style>
+    .teacher-dashboard-competition-view textarea{
+        height: 200px;
+    }
+    .competition-form-success{
+        color: red;
+        font-weight: bold;
+        margin-bottom: 30px;
+        line-height: 1.5;
+    }
+    .competition-form-success{
+        color: green;
+        font-weight: bold;
+        margin-bottom: 30px;
+        line-height: 1.5;
+    }
+    .summary-title {
+        margin-left: 20px;
+        margin-top: 20px;
+    }
+    .my-classes-instructions{
+        text-align: center;
+        margin: 10px;
+    }
+    .errorlist {color: red;
+                margin-left: -30pt;
+                font-size: 10pt;
+                }
+    ul{list-style-type: none;}
+    .td-helptext{font-size: 12pt;
+              color: #666; 
+              line-height: 1.5;
+    }
+    form label{padding-top: 8pt;}
+    .section-title-form{padding-top:20pt;padding-left:15pt;}
+    .form-wrapper{background-color:#EEE;
+                    padding: 15pt;
+                    margin-top:10pt;
+                    padding-bottom:40pt;}
+    form{margin-left: 30pt;}
+    .teacher-dashboard-class-header, .teacher-dashboard-class-body{
+        padding: 3pt;
+        line-height: 1.5;
+    }
+    .teacher-dashboard-class-header{
+        background-color: #57C;
+        font-weight:700;
+        padding: 10pt;
+    }
+    .teacher-dashboard-class-body{
+    }
+    .teacher-dashboard-class-item{
+        margin-bottom: 30pt;
+        background-color: #e6eef7;
+    }
+    table, th, td {
+        border: 0px solid black;
+    }
+    th, td {
+        padding: 10px;
+        text-align: left;
+    }
+    tbody > tr {
+       height: 30px;
+    }
+    tbody > tr > td {vertical-align: middle;}
+    tbody > tr > th {margin-right: 10px;}
+    td > input, select {
+        width: 100%;
+        size: 12pt;
+    }
+    .teacher-dashboard-competition-view td > select {
+        height: 30px;
+    }
+    .td-field{
+        width: 250px;    
+    }
+</style>
+</div>
