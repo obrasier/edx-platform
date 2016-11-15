@@ -14,8 +14,8 @@
      % endif
 </div>
 <div class="competition-description">
-For more details, see the Competition's Terms and Conditions.
-</div>
+<p>Select the class you would like to submit for, check your contact details, and fill in the rest of the entry form. Note we prefer the supply of a url for the video, using a 3rd party service. If you choose to upload your video using this form, please be patient. If there is a drop in connection, you may have to resubmit. As part of your entry, you are required to agree to the Competition's <a href = "/competition_tos" target="_blank">Terms and Conditions</a>. <i>Entries close 23:59:59 on the 18th of November AEDT (UTC+11)</i></p>
+<p> (*required fields)</p></div>
 <div class="competition-form">
         <form id="create-class-set" action="teacher#view-competition_submission" method="post" enctype="multipart/form-data">
             <input type="hidden" name="formtype" value="competition">
@@ -140,135 +140,16 @@ For more details, see the Competition's Terms and Conditions.
         </form>
 </div>
 </div>
-<script>
-        function render_upload(state) {
-            // Add download urls to template context
-            state.error = state.error ? state.error : false;
 
-            // Render template
-            var content = $(element).find("#upload-content").html(template(state));
-
-            // Set up file upload
-            $(content).find(".fileupload").fileupload({
-                url: this.attr(data-endpoint),
-                add: function(e, data) {
-                    var do_upload = $(content).find(".upload").html('');
-                    $('<button/>')
-                        .text('Upload ' + data.files[0].name)
-                        .appendTo(do_upload)
-                        .click(function() {
-                            do_upload.text("Uploading...");
-                            data.submit();
-                        });
-                },
-                progressall: function(e, data) {
-                    var percent = parseInt(data.loaded / data.total * 100, 10);
-                    $(content).find(".upload").text(
-                        "Uploading... " + percent + "%");
-                },
-                fail: function(e, data) {
-                    /**
-                     * Nginx and other sanely implemented servers return a 
-                     * "413 Request entity too large" status code if an 
-                     * upload exceeds its limit.  See the 'done' handler for
-                     * the not sane way that Django handles the same thing.
-                     */
-                    if (data.jqXHR.status == 413) {
-                        /* I guess we have no way of knowing what the limit is
-                         * here, so no good way to inform the user of what the
-                         * limit is.
-                         */
-                        state.error = "The file you are trying to upload is too large."
-                    }
-                    else {
-                        // Suitably vague
-                        state.error = "There was an error uploading your file.";
-
-                        // Dump some information to the console to help someone
-                        // debug.
-                        console.log("There was an error with file upload.");
-                        console.log("event: ", e);
-                        console.log("data: ", data);
-                    }
-                    render_upload(state);
-                },
-                done: function(e, data) { 
-                    /* When you try to upload a file that exceeds Django's size
-                     * limit for file uploads, Django helpfully returns a 200 OK
-                     * response with a JSON payload of the form:
-                     * 
-                     *   {'success': '<error message'}
-                     * 
-                     * Thanks Obama!
-                     */
-                    if (data.result.success !== undefined) {
-                        // Actually, this is an error
-                        state.error = data.result.success;
-                        render_upload(state);
-                    }
-                    else {
-                        // The happy path, no errors
-                        render_upload(data.result); 
-                    }
-                }
-            });
-        }
-
-    function xblock($, _) {
-            var block = $(element).find(".upload-file-test");
-            var state = block.attr("data-state");
-            render_upload(JSON.parse(state));
-    }
-
-    element = $('.teacher-dashboard-competition-view');
-    if (require === undefined) { 
-        /** 
-         * The LMS does not use require.js (although it loads it...) and
-         * does not already load jquery.fileupload.  (It looks like it uses
-         * jquery.ajaxfileupload instead.  But our XBlock uses 
-         * jquery.fileupload.
-         */
-        function loadjs(url) {
-            $("<script>")
-                .attr("type", "text/javascript")
-                .attr("src", url)
-                .appendTo(element);
-        }
-        loadjs("/static/js/vendor/jQuery-File-Upload/js/jquery.iframe-transport.js");
-        loadjs("/static/js/vendor/jQuery-File-Upload/js/jquery.fileupload.js");
-        xblock($, _);
-    }
-var button = document.getElementById('add-button'); // Assumes element with id='button'
-
-button.onclick = function() {
-    var div = document.getElementById('teacher-dashboard-class-form');
-    if (div.style.display !== 'none') {
-        div.style.display = 'none';
-    }
-    else {
-        div.style.display = 'block';
-    }
-};
-$(".teacher-dashboard-class-header").click(function () {
-    $(this).next().toggle();
-    $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
-});
-
-
-if(document.getElementsByClassName("errorlist").length >0){
-    var div = document.getElementById('teacher-dashboard-class-form');
-    div.style.display='block';
-}
-if(document.getElementsByClassName("empty-data").length > 0){
-    var div = document.getElementById('teacher-dashboard-class-form');
-    div.style.display='block';
-}
-
-</script>
 
 <style>
     .teacher-dashboard-competition-view textarea{
         height: 200px;
+    }
+    .competition-description{
+        margin-bottom: 30px;
+        line-height: 1.5;
+        font-size: 12pt;
     }
     .competition-form-success{
         color: red;
