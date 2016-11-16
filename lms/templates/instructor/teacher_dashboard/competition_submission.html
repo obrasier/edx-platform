@@ -19,12 +19,12 @@
     <ul>
     % for c in section_data['submission_history']:
     <li>
-    <div class="teacher-dashboard-class-item">
-            <div class="teacher-dashboard-class-header" >
+    <div class="teacher-dashboard-submission-item">
+            <div class="teacher-dashboard-submission-header" >
                 ${c["class_code"]}
                 <i class="fa fa-chevron-down" aria-hidden="true" style="float: right"></i>
         </div>
-        <div class="teacher-dashboard-class-body" style="display:none;">
+        <div class="teacher-dashboard-submission-body" style="display:none;">
             <ul>
                 <li> Number of Attempts:&nbsp; ${c["attempt"]}
                 <li> Latest Entry Received:&nbsp; ${c["received"]}
@@ -34,8 +34,6 @@
                 % endif
             </ul>
         </div>
-        <div class="teacher-dashboard-class-timetable">
-        </div>
     </div>
     % endfor
 </div>
@@ -43,7 +41,7 @@
 
 <h2>Entry Form</h2>
 <div class="competition-description">
-<p>Select the class you would like to submit for, check your contact details, and fill in the rest of the entry form. Note we prefer the supply of a url for the video, using a 3rd party service. If you choose to upload your video using this form, please be patient. If there is a drop in connection, you may have to resubmit. As part of your entry, you are required to agree to the Competition's <a href = "/competition_tos" target="_blank">Terms and Conditions</a>. <i>Entries close 23:59:59 on the 18th of November AEDT (UTC+11)</i></p>
+<p>Select the class you would like to submit for, check your contact details, and fill in the rest of the entry form. Note we prefer the supply of a url for the video, using a 3rd party service. If you choose to upload your video using this form, please be patient. If there is a drop in connection, you may have to resubmit. As part of your entry, you are required to agree to the Competition's <a href = "/competition_tos" target="_blank">Terms and Conditions</a>. <i>Entries close 23:59:59 on the 25th of November AEDT (UTC+11)</i></p>
 <p> (*required fields)</p></div>
 <div class="competition-form">
         <form id="create-class-set" action="teacher#view-competition_submission" method="post" enctype="multipart/form-data">
@@ -171,7 +169,7 @@
 </div>
 
 <script>
-    $(".teacher-dashboard-class-header").click(function () {
+    $(".teacher-dashboard-submission-header").click(function () {
         $(this).next().toggle();
         $("i", this).toggleClass("fa-chevron-up fa-chevron-down");
     });
@@ -221,18 +219,20 @@
                     margin-top:10pt;
                     padding-bottom:40pt;}
     form{margin-left: 30pt;}
-    .teacher-dashboard-class-header, .teacher-dashboard-class-body{
+    .teacher-dashboard-submission-header, .teacher-dashboard-submission-body{
+        cursor: pointer;
+        cursor: hand;
         padding: 3pt;
         line-height: 1.5;
     }
-    .teacher-dashboard-class-header{
+    .teacher-dashboard-submission-header{
         background-color: #57C;
         font-weight:700;
         padding: 10pt;
     }
-    .teacher-dashboard-class-body{
+    .teacher-dashboard-submission-body{
     }
-    .teacher-dashboard-class-item{
+    .teacher-dashboard-submission-item{
         margin-bottom: 30pt;
         background-color: #e6eef7;
     }
