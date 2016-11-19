@@ -2710,7 +2710,7 @@ def list_financial_report_downloads(_request, course_id):
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('teacher')
+#@require_level('teacher')
 def calculate_grades_csv_class_code(request, course_id):
     """
     AlreadyRunningError is raised if the course's grades are already being updated.
@@ -2718,9 +2718,15 @@ def calculate_grades_csv_class_code(request, course_id):
     class_code = request.GET.get('class_code')
     course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
 
+    staff_access = has_access(request.user,'staff',course_key)
+    teacher_access = has_access(request.user,'teacher',course_key)
+
+    if not (teacher_access or staff_access):
+        return HttpResponseForbidden()
+
     try:
         class_set = ClassSet.objects.get(class_code=class_code,course_id=course_key)
-        if request.user != class_set.teacher:
+        if (not staff_access) and request.user != class_set.teacher:
             return HttpResponseForbidden('No access to this class')
     except ClassSet.DoesNotExist:
         return JsonResponse({"status": "Not a valid class code for given course."})
@@ -2791,7 +2797,7 @@ def submissions_report(request, course_id):
         #check teacher has access over this class
         try:
             class_set = ClassSet.objects.get(class_code=class_code,course_id=course_id)
-            if request.user != class_set.teacher:
+            if (not staff_access) and request.user != class_set.teacher:
                 return HttpResponseForbidden('No access to this class')
         except ClassSet.DoesNotExist:
             return JsonResponse({"status": "Not a valid class code for given course."})
@@ -2841,7 +2847,7 @@ def problem_grade_report(request, course_id):
         #check teacher has access over this class
         try:
             class_set = ClassSet.objects.get(class_code=class_code,course_id=course_id)
-            if request.user != class_set.teacher:
+            if (not staff_access) and  request.user != class_set.teacher:
                 return HttpResponseForbidden('No access to this class')
         except ClassSet.DoesNotExist:
             return JsonResponse({"status": "Not a valid class code for given course."})
