@@ -312,7 +312,7 @@ def _upload_competition_submission(request,course_id,competition_form):
         ###
         # Src Upload
         ###
-        if len(media_release_files)>0:
+        if len(src_files)>0:
             src_entry['src_file_names'] = []
             src_entry['src_file_sha1s'] = []
             src_entry['src_file_mimetypes'] = []
@@ -335,6 +335,8 @@ def _upload_competition_submission(request,course_id,competition_form):
         return {'success': True}
 
     except Exception:
+        log.error(type(Exception))
+        log.error(Exception)
         return {'success': False, 'error_msg': True }
 
 def _comp_file_storage_path(sha1, filename,course_key,class_code,attempt,sub_type):

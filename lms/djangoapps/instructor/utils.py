@@ -99,7 +99,7 @@ def get_last_submission_summary(class_code):
         if media.get('media_file_names',None):
             count+=len(media['media_file_names'])
         if src.get('src_file_names',None):
-            count+=len(media['src_file_names'])
+            count+=len(src['src_file_names'])
 
         return {
                 'class_code':class_code,
